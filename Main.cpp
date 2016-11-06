@@ -106,7 +106,7 @@ void SDLAudioCallback(void* userdata, Uint8* stream, int len)
     size_t nb_samples_needed = len / sizeof(GB::AudioSample);
     size_t nb_samples_have = pos - context->prev_pos;
 
-    if (nb_samples_have < nb_samples_needed)
+    if (nb_samples_have < nb_samples_needed * 2)
     {
         // Fill with silence
         memset(stream, 0, len);
@@ -139,7 +139,7 @@ int main(int argc, char* argv[])
     (void)argv;
 
     bool bUseSDL = true;
-    bool bUseVSync = true;
+    bool bUseVSync = false;
 
     const char* file_name = nullptr;
     if (argc > 1)
@@ -295,6 +295,9 @@ int main(int argc, char* argv[])
         SDL_PauseAudioDevice(audio_dev, 0);
     }
 
+    GB::u32 last_rendered_frame = 0;
+    auto run_time = high_resolution_clock::now();
+
     bool bQuit = false;
     while(!bQuit)
     {
@@ -314,10 +317,16 @@ int main(int argc, char* argv[])
                 else if (eAction == Action::KeyUpdate)
                 {
                     gb.UpdateKeys(g_keys);
-                    printf(""); // Fix weird SDL bug
                 }
 
             } while (eAction != Action::None);
+
+            {
+                lock_guard<mutex> lock(audio_context.mtx);
+                audio_context.pos = gb.GetAudioBufPos();
+            }
+
+
         }
 
         if (bQuit)
@@ -325,36 +334,43 @@ int main(int argc, char* argv[])
             break;
         }
 
-        gb.RunFrame();
 
-        if (bUseSDL)
-        {
-            {
-                lock_guard<mutex> lock(audio_context.mtx);
-                audio_context.pos = gb.GetAudioBufPos();
+        auto cur_frame_number = gb.GetFrameNumber();
+
+        if (cur_frame_number != last_rendered_frame) {
+            ++nb_frames;
+            last_rendered_frame = cur_frame_number;
+
+            if (bUseSDL) {
+                auto pix = gb.GetPixels();
+
+                SDL_UpdateTexture(pTexture, nullptr, pix, sizeof(pix[0]) * 160);
+
+                SDL_RenderClear(pRenderer);
+                SDL_RenderCopy(pRenderer, pTexture, NULL, NULL);
+                SDL_RenderPresent(pRenderer);
             }
-
-            auto pix = gb.GetPixels();
-
-            SDL_UpdateTexture(pTexture, nullptr, pix, sizeof(pix[0]) * 160);
-
-            SDL_RenderClear(pRenderer);
-            SDL_RenderCopy(pRenderer, pTexture, NULL, NULL);
-            SDL_RenderPresent(pRenderer);
         }
-        ++nb_frames;
+
         auto time_now = high_resolution_clock::now();
+
+        auto elapsed = time_now - run_time;
+
+        auto emu_elapsed = gb.RunTime(duration_cast<nanoseconds>(elapsed));
+
+        run_time += emu_elapsed;
+
         if (start_time + seconds(1) < time_now)
         {
             duration<float> fsec = time_now - start_time;
             float fps = 1.0f * nb_frames / fsec.count();
-            printf("FPS:%.2f (%.0f%%)\n", fps, fps / 60 * 100);
+            printf("FPS:%.2f (%.0f%%)\r", fps, fps / 60 * 100);
             nb_frames = 0;
             start_time = time_now;
         }
+
+        this_thread::sleep_for(milliseconds(1));
     }
-
-
 
     if (bUseSDL)
     {

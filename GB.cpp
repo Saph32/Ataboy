@@ -34,6 +34,7 @@
 #include <cstring>
 
 using namespace std;
+using namespace std::chrono;
 
 namespace GB
 {
@@ -447,6 +448,8 @@ public:
     CPU m_cpu;
     
     bool m_new_frame = false;
+    u32 m_frame_number = 0;
+    u64 m_cycle_count = 0;
 
     Video m_video;
     GamePak m_game_pak;
@@ -460,10 +463,12 @@ public:
         m_video.Tick(*this);
         m_io.Tick(*this);
         m_audio.Tick(*this);
+        ++m_cycle_count;
     }
 
     void Reset();
     void RunFrame();
+    nanoseconds RunTime(nanoseconds time_to_run);
 
     template<Access eAccess> u8 BusAccess(u16 addr, u8 v = 0);
 };
@@ -490,6 +495,16 @@ void GB::Reset()
 void GB::RunFrame()
 {
     m_pSystem->RunFrame();
+}
+
+std::chrono::nanoseconds GB::RunTime(std::chrono::nanoseconds time_to_run)
+{
+    return m_pSystem->RunTime(time_to_run);
+}
+
+u32 GB::GetFrameNumber()
+{
+    return m_pSystem->m_frame_number;
 }
 
 const u32 * GB::GetPixels() const
@@ -1631,6 +1646,7 @@ void Video::Flip(System & rSystem)
     swap(m_upBack_buf, m_upFront_buf);
 
     rSystem.m_new_frame = true;
+    ++rSystem.m_frame_number;
 }
 
 void Video::RenderLine()
@@ -1839,6 +1855,9 @@ void System::Reset()
     m_video.Reset();
     m_io.Reset();
     m_audio.Reset();
+    m_frame_number = 0;
+    m_cycle_count = 0;
+    m_new_frame = false;
 }
 
 void System::RunFrame()
@@ -1848,6 +1867,20 @@ void System::RunFrame()
     {
         m_cpu.Execute(*this);
     }
+}
+
+nanoseconds System::RunTime(nanoseconds time_to_run)
+{
+    u64 cycles_to_run = time_to_run.count() * 1024LL * 1024LL / 1000000000LL;
+    auto start_cycle_count = m_cycle_count;
+    auto end_cycle_count = start_cycle_count + cycles_to_run;
+
+    while (m_cycle_count < end_cycle_count)
+    {
+        m_cpu.Execute(*this);
+    }
+
+    return nanoseconds((m_cycle_count - start_cycle_count) * 1000000000LL / (1024LL * 1024LL));
 }
 
 void Audio::Reset()

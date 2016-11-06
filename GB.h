@@ -26,6 +26,7 @@
 #pragma once
 
 #include <memory>
+#include <chrono>
 
 namespace GB
 {
@@ -33,6 +34,7 @@ namespace GB
 typedef unsigned char   u8;
 typedef unsigned short  u16;
 typedef unsigned int    u32;
+typedef unsigned long long int u64;
 typedef signed short i16;
 
 class System;
@@ -68,6 +70,8 @@ public:
     void Reset();
 
     void RunFrame();
+    std::chrono::nanoseconds RunTime(std::chrono::nanoseconds time_to_run);
+    u32 GetFrameNumber();
     const u32* GetPixels() const;
     void UpdateKeys(const Keys& rKeys);
     const AudioSample* GetAudioBuf() const;
