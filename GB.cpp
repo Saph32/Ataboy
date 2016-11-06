@@ -31,6 +31,7 @@
 #include <vector>
 
 #include <cstdio>
+#include <cstring>
 
 using namespace std;
 
@@ -325,7 +326,7 @@ public:
     u8 MakeP1(System& rSystem);
     void SetTAC(u8 v);
 
-    template<Access eAccess> u8 Access(System& rSystem, const u8 addr, const u8 v = 0);
+    template<Access eAccess> u8 RegAccess(System& rSystem, const u8 addr, const u8 v = 0);
 };
 
 class Audio
@@ -430,14 +431,14 @@ public:
     void Reset();
     void Tick(System&);
 
-    template<Access eAccess> u8 Access(const u8 addr, const u8 v = 0);
+    template<Access eAccess> u8 RegAccess(const u8 addr, const u8 v = 0);
 };
 
 template<>
-u8 Audio::Access<Access::Read>(const u8 addr, const u8 v);
+u8 Audio::RegAccess<Access::Read>(const u8 addr, const u8 v);
 
 template<>
-u8 Audio::Access<Access::Write>(const u8 addr, const u8 v);
+u8 Audio::RegAccess<Access::Write>(const u8 addr, const u8 v);
 
 class System
 {
@@ -573,7 +574,7 @@ u8 System::BusAccess(u16 addr, u8 v) {
         return m_video.OAMAccess<eAccess>(addr & 0xff, v);
     }
     else if (addr < 0xff80) {
-        return m_io.Access<eAccess>(*this, addr & 0xff, v);
+        return m_io.RegAccess<eAccess>(*this, addr & 0xff, v);
     }
     else {
         if (eAccess == Access::Write) {
@@ -1365,14 +1366,14 @@ u8 GamePak::RAMAccess(const u16 addr, const u8 v)
 
 
 template<Access eAccess>
-u8 IO::Access(System& rSystem, const u8 addr, const u8 v)
+u8 IO::RegAccess(System& rSystem, const u8 addr, const u8 v)
 {
 #pragma warning( push )
 #pragma warning( disable : 4127 )   // warning C4127: conditional expression is constant
 
     if (addr >= 0x10 && addr <= 0x3F)
     {
-        return rSystem.m_audio.Access<eAccess>(addr, v);
+        return rSystem.m_audio.RegAccess<eAccess>(addr, v);
     }
 
     switch (addr)
@@ -1851,24 +1852,24 @@ void System::RunFrame()
 
 void Audio::Reset()
 {
-    Access<Access::Write>(0x10, 0x80);
-    Access<Access::Write>(0x11, 0xBF);
-    Access<Access::Write>(0x12, 0xF3);
-    Access<Access::Write>(0x14, 0xBF);
-    Access<Access::Write>(0x16, 0x3F);
-    Access<Access::Write>(0x17, 0x00);
-    Access<Access::Write>(0x19, 0xBF);
-    Access<Access::Write>(0x1A, 0x7F);
-    Access<Access::Write>(0x1B, 0xFF);
-    Access<Access::Write>(0x1C, 0x9F);
-    Access<Access::Write>(0x1E, 0xBF);
-    Access<Access::Write>(0x20, 0xFF);
-    Access<Access::Write>(0x21, 0x00);
-    Access<Access::Write>(0x22, 0x00);
-    Access<Access::Write>(0x23, 0xBF);
-    Access<Access::Write>(0x24, 0x77);
-    Access<Access::Write>(0x25, 0xF3);
-    Access<Access::Write>(0x26, 0xF1);
+    RegAccess<Access::Write>(0x10, 0x80);
+    RegAccess<Access::Write>(0x11, 0xBF);
+    RegAccess<Access::Write>(0x12, 0xF3);
+    RegAccess<Access::Write>(0x14, 0xBF);
+    RegAccess<Access::Write>(0x16, 0x3F);
+    RegAccess<Access::Write>(0x17, 0x00);
+    RegAccess<Access::Write>(0x19, 0xBF);
+    RegAccess<Access::Write>(0x1A, 0x7F);
+    RegAccess<Access::Write>(0x1B, 0xFF);
+    RegAccess<Access::Write>(0x1C, 0x9F);
+    RegAccess<Access::Write>(0x1E, 0xBF);
+    RegAccess<Access::Write>(0x20, 0xFF);
+    RegAccess<Access::Write>(0x21, 0x00);
+    RegAccess<Access::Write>(0x22, 0x00);
+    RegAccess<Access::Write>(0x23, 0xBF);
+    RegAccess<Access::Write>(0x24, 0x77);
+    RegAccess<Access::Write>(0x25, 0xF3);
+    RegAccess<Access::Write>(0x26, 0xF1);
 }
 
 void Audio::Tick(System &)
@@ -2194,7 +2195,7 @@ void Audio::Tick(System &)
 }
 
 template<>
-u8 Audio::Access<Access::Read>(const u8 addr, const u8)
+u8 Audio::RegAccess<Access::Read>(const u8 addr, const u8)
 {
     if (addr >= 0x30 && addr < 0x40)
     {
@@ -2229,7 +2230,7 @@ u8 Audio::Access<Access::Read>(const u8 addr, const u8)
 }
 
 template<>
-u8 Audio::Access<Access::Write>(const u8 addr, const u8 v)
+u8 Audio::RegAccess<Access::Write>(const u8 addr, const u8 v)
 {
     if (addr >= 0x30 && addr < 0x40)
     {

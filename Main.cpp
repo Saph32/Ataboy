@@ -348,7 +348,7 @@ int main(int argc, char* argv[])
         {
             duration<float> fsec = time_now - start_time;
             float fps = 1.0f * nb_frames / fsec.count();
-            printf("FPS:%.2f (%.0f%%)\r", fps, fps / 60 * 100);
+            printf("FPS:%.2f (%.0f%%)\n", fps, fps / 60 * 100);
             nb_frames = 0;
             start_time = time_now;
         }
