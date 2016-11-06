@@ -197,7 +197,7 @@ int main(int argc, char* argv[])
     //file_name = R"(D:\emu\gb\Tests\dmg_sound\dmg_sound.gb)";
 
     
-    //file_name = R"(D:\emu\gb\Tests\dmg_sound\rom_singles\01-registers.gb)";
+    file_name = R"(D:\emu\gb\Tests\dmg_sound\rom_singles\01-registers.gb)";
     //file_name = R"(D:\emu\gb\Tests\dmg_sound\rom_singles\02-len ctr.gb)";
     //file_name = R"(D:\emu\gb\Tests\dmg_sound\rom_singles\03-trigger.gb)";
     //file_name = R"(D:\emu\gb\Tests\dmg_sound\rom_singles\04-sweep.gb)";

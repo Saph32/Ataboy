@@ -365,6 +365,7 @@ public:
     u16 m_freq = 0;
     int m_period = 0;
 
+    void Reset(Audio& rAudio);
     void RunLenght();
     void RunEnv(SoundEnv& rEnv);
     void RunSquare(SquareWave& rSq);
@@ -377,6 +378,7 @@ public:
     SquareWave m_sq;
     FreqSweep m_sweep;
 
+    void Reset(Audio& rAudio);
     void RunSweep();
 };
 
@@ -385,6 +387,8 @@ class Square2 : public SoundChannel
 public:
     SoundEnv m_env;
     SquareWave m_sq;
+
+    void Reset(Audio& rAudio);
 };
 
 class SoundWave : public SoundChannel
@@ -394,6 +398,7 @@ public:
     u8 m_phase = 0;
     u8 m_vol_shift = 0;
 
+    void Reset(Audio& rAudio);
     void RunWave(Audio& rAudio);
 };
 
@@ -406,6 +411,7 @@ public:
     u16  m_lfsr = 0;
     u8   m_div = 0;
 
+    void Reset(Audio& rAudio);
     void RunNoise();
 };
 
@@ -449,6 +455,8 @@ public:
     Square2 sq2;
     SoundWave wave;
     Noise noise;
+
+    bool m_master_enable = false;
 
     u8 left_vol = 0;
     u8 right_vol = 0;
@@ -1910,6 +1918,13 @@ nanoseconds System::RunTime(nanoseconds time_to_run)
 
 void Audio::Reset()
 {
+    sq1.Reset(*this);
+    sq2.Reset(*this);
+    wave.Reset(*this);
+    noise.Reset(*this);
+
+    // Boot rom state
+    RegAccess<Access::Write>(0x26, 0x80);
     RegAccess<Access::Write>(0x10, 0x80);
     RegAccess<Access::Write>(0x11, 0xBF);
     RegAccess<Access::Write>(0x12, 0xF3);
@@ -1927,93 +1942,93 @@ void Audio::Reset()
     RegAccess<Access::Write>(0x23, 0xBF);
     RegAccess<Access::Write>(0x24, 0x77);
     RegAccess<Access::Write>(0x25, 0xF3);
-    RegAccess<Access::Write>(0x26, 0xF1);
 }
 
 void Audio::Tick(System &)
 {
-    // Advance lenght
-    if ((audio_clock & 4095) == 0)
+    if (m_master_enable)
     {
-        sq1.RunLenght();
-        sq2.RunLenght();
-        wave.RunLenght();
-        noise.RunLenght();
-
-        // Advance sweep
-        if ((audio_clock & 8191) == 0)
+        // Advance lenght
+        if ((audio_clock & 4095) == 0)
         {
-            sq1.RunSweep();
+            sq1.RunLenght();
+            sq2.RunLenght();
+            wave.RunLenght();
+            noise.RunLenght();
 
-            // Advance enveloppe
-            if ((audio_clock & 16383) == 0)
+            // Advance sweep
+            if ((audio_clock & 8191) == 0)
             {
-                sq1.RunEnv(sq1.m_env);
-                sq2.RunEnv(sq2.m_env);
-                noise.RunEnv(noise.m_env);
+                sq1.RunSweep();
+
+                // Advance enveloppe
+                if ((audio_clock & 16383) == 0)
+                {
+                    sq1.RunEnv(sq1.m_env);
+                    sq2.RunEnv(sq2.m_env);
+                    noise.RunEnv(noise.m_env);
+                }
             }
         }
+
+
+        // Channel 1
+        sq1.RunSquare(sq1.m_sq);
+
+        // Channel 2
+        sq2.RunSquare(sq2.m_sq);
+
+        // Channel 3
+        wave.RunWave(*this);
+        wave.RunWave(*this);
+
+        // Channel 4
+        noise.RunNoise();
     }
-
-
-    // Channel 1
-    sq1.RunSquare(sq1.m_sq);
-
-    // Channel 2
-    sq2.RunSquare(sq2.m_sq);
-
-    // Channel 3
-    wave.RunWave(*this);
-    wave.RunWave(*this);
-
-    // Channel 4
-    noise.RunNoise();
 
     ++audio_clock;
     if ((audio_clock & 31) == 0) {
         auto& sample = audio_buf[audio_pos & AUDIO_BUF_SIZE_MASK];
         ++audio_pos;
 
-        i16 chan1 = (sq1.m_active && sq1.m_out_val) ? (int)sq1.m_env.vol * 256 : 0;
-        i16 chan2 = (sq2.m_active && sq2.m_out_val) ? (int)sq2.m_env.vol * 256 : 0;
-        i16 chan3 = wave.m_active ? (int)wave.m_out_val * 256: 0;
-        i16 chan4 = (noise.m_active && noise.m_out_val) ? (int)noise.m_env.vol * 256 : 0;
-
         i16 left = 0;
         i16 right = 0;
 
-        left = 0;
+        if (m_master_enable) {
+            i16 chan1 = (sq1.m_active && sq1.m_out_val) ? (int)sq1.m_env.vol * 256 : 0;
+            i16 chan2 = (sq2.m_active && sq2.m_out_val) ? (int)sq2.m_env.vol * 256 : 0;
+            i16 chan3 = wave.m_active ? (int)wave.m_out_val * 256: 0;
+            i16 chan4 = (noise.m_active && noise.m_out_val) ? (int)noise.m_env.vol * 256 : 0;
 
-        if (NR51 & 0x80) {
-            left += chan4;
-        }
-        if (NR51 & 0x40) {
-            left += chan3;
-        }
-        if (NR51 & 0x20) {
-            left += chan2;
-        }
-        if (NR51 & 0x10) {
-            left += chan1;
-        }
+            if (NR51 & 0x80) {
+                left += chan4;
+            }
+            if (NR51 & 0x40) {
+                left += chan3;
+            }
+            if (NR51 & 0x20) {
+                left += chan2;
+            }
+            if (NR51 & 0x10) {
+                left += chan1;
+            }
 
-        right = 0;
 
-        if (NR51 & 0x8) {
-            right += chan4;
+            if (NR51 & 0x8) {
+                right += chan4;
+            }
+            if (NR51 & 0x4) {
+                right += chan3;
+            }
+            if (NR51 & 0x2) {
+                right += chan2;
+            }
+            if (NR51 & 0x1) {
+                right += chan1;
+            }
+            left = left * (int)left_vol / 8;
+            right = right * (int)right_vol / 8;
         }
-        if (NR51 & 0x4) {
-            right += chan3;
-        }
-        if (NR51 & 0x2) {
-            right += chan2;
-        }
-        if (NR51 & 0x1) {
-            right += chan1;
-        }
-        left = left * (int)left_vol / 8;
-        right = right * (int)right_vol / 8;
-
         sample.right = left;
         sample.left = right;
         // Mix some right to left and left to rightfor confort
@@ -2032,11 +2047,12 @@ u8 Audio::RegAccess<Access::Read>(const u8 addr, const u8)
 
     switch (addr)
     {
-    case 0x10: return NR10;
+    case 0x10: return NR10 | 0x80;
     case 0x11: return NR11 | 0x3f;
     case 0x12: return NR12;
     case 0x13: return 0xff;
     case 0x14: return NR14 | 0xbf;
+    case 0x15: return 0xff;
     case 0x16: return NR21 | 0x3f;
     case 0x17: return NR22;
     case 0x18: return 0xff;
@@ -2046,13 +2062,24 @@ u8 Audio::RegAccess<Access::Read>(const u8 addr, const u8)
     case 0x1c: return NR32 | 0x9f;
     case 0x1d: return 0xff;
     case 0x1e: return NR34 | 0xbf;
-    case 0x20: return NR41;
+    case 0x1f: return 0xff;
+    case 0x20: return 0xff;
     case 0x21: return NR42;
     case 0x22: return NR43;
-    case 0x23: return NR44;
+    case 0x23: return NR44 | 0xbf;
     case 0x24: return NR50;
     case 0x25: return NR51;
-    case 0x26: return NR52;
+    case 0x26:
+        if (m_master_enable) {
+            return 0xF0 |
+                (((!sq1.m_use_lenght || sq1.m_lenght) && sq1.m_active) ? 0x01 : 0) |
+                (((!sq2.m_use_lenght || sq2.m_lenght) && sq1.m_active)? 0x02 : 0) |
+                (((!wave.m_use_lenght || wave.m_lenght) && sq1.m_active)? 0x04 : 0) |
+                (((!noise.m_use_lenght || noise.m_lenght) && sq1.m_active)? 0x08 : 0);
+        } else {
+            return 0x70;
+        }
+        break;
     }
     return 0xff;
 }
@@ -2063,6 +2090,10 @@ u8 Audio::RegAccess<Access::Write>(const u8 addr, const u8 v)
     if (addr >= 0x30 && addr < 0x40)
     {
         AUD3WAVERAM[addr - 0x30] = v;
+        return 0xff;
+    }
+
+    if (!m_master_enable && addr !=0x26) {
         return 0xff;
     }
 
@@ -2218,9 +2249,32 @@ u8 Audio::RegAccess<Access::Write>(const u8 addr, const u8 v)
     case 0x25:
         NR51 = v;
         break;
+    case 0x26:
+        NR52 = v;
+        m_master_enable = (v & 0x80) != 0;
+        if (!m_master_enable) {
+            sq1.Reset(*this);
+            sq2.Reset(*this);
+            wave.Reset(*this);
+            noise.Reset(*this);
+        }
+        break;
     }
 
     return 0xff;
+}
+
+void SoundChannel::Reset(Audio & rAudio)
+{
+    m_active = false;
+    m_freq = 0;
+    m_lenght = 0;
+    m_use_lenght = false;
+    m_out_val = 0;
+    m_period = 0;
+
+    rAudio.NR50 = 0;
+    rAudio.NR51 = 0;
 }
 
 void SoundChannel::RunLenght()
@@ -2299,6 +2353,26 @@ void SoundChannel::RunSquare(SquareWave & rSq)
     }
 }
 
+void Square1::Reset(Audio & rAudio)
+{
+    SoundChannel::Reset(rAudio);
+
+    m_sweep.active = false;
+    m_sweep.freq = 0;
+    m_sweep.freq_int = 0;
+    m_sweep.inc = false;
+    m_sweep.period = 0;
+    m_sweep.shift = 0;
+    m_sq.duty = 0;
+    m_sq.phase = 0;
+
+    rAudio.NR10 = 0;
+    rAudio.NR11 = 0;
+    rAudio.NR12 = 0;
+    rAudio.NR13 = 0;
+    rAudio.NR14 = 0;
+}
+
 void Square1::RunSweep()
 {
     if (m_sweep.active)
@@ -2333,6 +2407,34 @@ void Square1::RunSweep()
     }
 }
 
+void Square2::Reset(Audio & rAudio)
+{
+    SoundChannel::Reset(rAudio);
+
+    m_sq.duty = 0;
+    m_sq.phase = 0;
+
+    rAudio.NR21 = 0;
+    rAudio.NR22 = 0;
+    rAudio.NR23 = 0;
+    rAudio.NR24 = 0;
+}
+
+void SoundWave::Reset(Audio & rAudio)
+{
+    SoundChannel::Reset(rAudio);
+
+    m_vol_shift = 0;
+    m_enable = false;
+    m_phase = 0;
+
+    rAudio.NR30 = 0;
+    rAudio.NR31 = 0;
+    rAudio.NR32 = 0;
+    rAudio.NR33 = 0;
+    rAudio.NR34 = 0;
+}
+
 void SoundWave::RunWave(Audio& rAudio)
 {
     if (m_active)
@@ -2355,6 +2457,20 @@ void SoundWave::RunWave(Audio& rAudio)
             --m_period;
         }
     }
+}
+
+void Noise::Reset(Audio & rAudio)
+{
+    SoundChannel::Reset(rAudio);
+
+    m_use7bits = false;
+    m_div = 0;
+    m_lfsr = 0xff;
+
+    rAudio.NR41 = 0;
+    rAudio.NR42 = 0;
+    rAudio.NR43 = 0;
+    rAudio.NR44 = 0;
 }
 
 void Noise::RunNoise()
