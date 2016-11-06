@@ -2072,10 +2072,10 @@ u8 Audio::RegAccess<Access::Read>(const u8 addr, const u8)
     case 0x26:
         if (m_master_enable) {
             return 0xF0 |
-                (((!sq1.m_use_lenght || sq1.m_lenght) && sq1.m_active) ? 0x01 : 0) |
-                (((!sq2.m_use_lenght || sq2.m_lenght) && sq1.m_active)? 0x02 : 0) |
-                (((!wave.m_use_lenght || wave.m_lenght) && sq1.m_active)? 0x04 : 0) |
-                (((!noise.m_use_lenght || noise.m_lenght) && sq1.m_active)? 0x08 : 0);
+                ((!sq1.m_use_lenght || sq1.m_lenght) ? 0x01 : 0) |
+                ((!sq2.m_use_lenght || sq2.m_lenght) ? 0x02 : 0) |
+                ((!wave.m_use_lenght || wave.m_lenght) ? 0x04 : 0) |
+                ((!noise.m_use_lenght || noise.m_lenght) ? 0x08 : 0);
         } else {
             return 0x70;
         }
@@ -2102,7 +2102,7 @@ u8 Audio::RegAccess<Access::Write>(const u8 addr, const u8 v)
     case 0x10:
         NR10 = v;
         sq1.m_sweep.freq = (v >> 4) & 0x7;
-        sq1.m_sweep.inc = (v & 7) == 0;
+        sq1.m_sweep.inc = (v & 8) == 0;
         sq1.m_sweep.shift = v & 7;
         break;
     case 0x11:
@@ -2209,7 +2209,7 @@ u8 Audio::RegAccess<Access::Write>(const u8 addr, const u8 v)
         break;
     case 0x20:
         NR41 = v;
-        noise.m_lenght = (int)(v & 0x3f);
+        noise.m_lenght = 64 - (int)(v & 63);
         break;
     case 0x21:
         NR42 = v;
@@ -2269,7 +2269,7 @@ void SoundChannel::Reset(Audio & rAudio)
     m_active = false;
     m_freq = 0;
     m_lenght = 0;
-    m_use_lenght = false;
+    m_use_lenght = true;
     m_out_val = 0;
     m_period = 0;
 
@@ -2387,6 +2387,7 @@ void Square1::RunSweep()
                     m_active = false;
                 } else {
                     m_freq = (u16)(new_freq & 0x7FF);
+                    m_period = 2048 - m_freq;
                 }
             } else {
                 int new_freq = (int)m_freq - adjust;
@@ -2395,6 +2396,7 @@ void Square1::RunSweep()
                     m_active = false;
                 } else {
                     m_freq = (u16)(new_freq & 0x7FF);
+                    m_period = 2048 - m_freq;
                 }
             }
 
