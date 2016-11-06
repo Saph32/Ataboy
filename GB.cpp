@@ -330,6 +330,85 @@ public:
     template<Access eAccess> u8 RegAccess(System& rSystem, const u8 addr, const u8 v = 0);
 };
 
+struct SoundEnv
+{
+    bool inc = false;
+    u8 period = 0;
+    u8 freq = 0;
+    u8 init_vol = 0;
+    u8 vol = 0;
+};
+
+struct SquareWave
+{
+    u8 phase = 0;
+    u8 duty = 0;
+};
+
+struct FreqSweep
+{
+    bool active = false;
+    bool inc = false;
+    int freq_int = 0;
+    int period = 0;
+    u8 freq = 0;
+    u8 shift = 0;
+};
+
+class SoundChannel
+{
+public:
+    bool m_active = false;
+    int m_lenght = 0;
+    bool m_use_lenght = false;
+    u8 m_out_val = 0;
+    u16 m_freq = 0;
+    int m_period = 0;
+
+    void RunLenght();
+    void RunEnv(SoundEnv& rEnv);
+    void RunSquare(SquareWave& rSq);
+};
+
+class Square1 : public SoundChannel
+{
+public:
+    SoundEnv m_env;
+    SquareWave m_sq;
+    FreqSweep m_sweep;
+
+    void RunSweep();
+};
+
+class Square2 : public SoundChannel
+{
+public:
+    SoundEnv m_env;
+    SquareWave m_sq;
+};
+
+class SoundWave : public SoundChannel
+{
+public:
+    bool m_enable = false;
+    u8 m_phase = 0;
+    u8 m_vol_shift = 0;
+
+    void RunWave(Audio& rAudio);
+};
+
+class Noise : public SoundChannel
+{
+public:
+    SoundEnv m_env;
+
+    bool m_use7bits = 0;
+    u16  m_lfsr = 0;
+    u8   m_div = 0;
+
+    void RunNoise();
+};
+
 class Audio
 {
 public:
@@ -366,64 +445,10 @@ public:
     size_t audio_pos = 0;
     size_t audio_clock = 0;
 
-    u16 chan1_freq = 0;
-    bool chan1_out = false;
-    bool chan1_active = false;
-    int chan1_period = 0;
-    u8 chan1_phase = 0;
-    u8 chan1_duty = 0;
-    int chan1_lenght = 0;
-    bool chan1_use_lenght = false;
-    u8 chan1_vol = 0;
-    u8 chan1_env_period = 0;
-    u8 chan1_env_freq = 0;
-    bool chan1_env_inc = false;
-    u8 chan1_init_vol = 0;
-    u8 chan1_sweep_freq = 0;
-    u8 chan1_sweep_shift = 0;
-    bool chan1_sweep_inc = false;
-    int chan1_sweep_freq_int = 0;
-    int chan1_sweep_period = 0;
-    bool chan1_sweep_active = false;
-
-    u16 chan2_freq = 0;
-    bool chan2_out = false;
-    bool chan2_active = false;
-    int chan2_period = 0;
-    u8 chan2_phase = 0;
-    u8 chan2_duty = 0;
-    int chan2_lenght = 0;
-    bool chan2_use_lenght = false;
-    u8 chan2_vol = 0;
-    u8 chan2_env_period = 0;
-    u8 chan2_env_freq = 0;
-    bool chan2_env_inc = false;
-    u8 chan2_init_vol = 0;
-
-    u16 chan3_freq = 0;
-    i16 chan3_val = 0;
-    int chan3_period = 0;
-    u8 chan3_phase = 0;
-    bool chan3_enable = false;
-    u8 chan3_vol = 0;
-    int chan3_lenght = 0;
-    bool chan3_active = false;
-    bool chan3_use_lenght = false;
-
-    bool chan4_out = false;
-    u8 chan4_freq = 0;
-    u8 chan4_div = 0;
-    int chan4_period = 0;
-    bool chan4_7bits = 0;
-    u16 chan4_lfsr = 0;
-    int chan4_lenght = 0;
-    bool chan4_active = false;
-    bool chan4_use_lenght = false;
-    u8 chan4_vol = 0;
-    u8 chan4_env_period = 0;
-    u8 chan4_env_freq = 0;
-    bool chan4_env_inc = false;
-    u8 chan4_init_vol = 0;
+    Square1 sq1;
+    Square2 sq2;
+    SoundWave wave;
+    Noise noise;
 
     u8 left_vol = 0;
     u8 right_vol = 0;
@@ -1910,279 +1935,49 @@ void Audio::Tick(System &)
     // Advance lenght
     if ((audio_clock & 4095) == 0)
     {
-        if (chan1_lenght > 0){
-            --chan1_lenght;
-            if (chan1_lenght == 0 && chan1_use_lenght)
-            {
-                chan1_active = false;
-            }
-        }
-        if (chan2_lenght > 0){
-            --chan2_lenght;
-            if (chan2_lenght == 0 && chan2_use_lenght)
-            {
-                chan2_active = false;
-            }
-        }
-        if (chan3_lenght > 0){
-            --chan3_lenght;
-            if (chan3_lenght == 0 && chan3_use_lenght)
-            {
-                chan3_active = false;
-            }
-        }
+        sq1.RunLenght();
+        sq2.RunLenght();
+        wave.RunLenght();
+        noise.RunLenght();
 
         // Advance sweep
         if ((audio_clock & 8191) == 0)
         {
-            if (chan1_sweep_active)
-            {
-                if (chan1_sweep_period == 0)
-                {
-                    int adjust = (int)chan1_sweep_freq_int >> chan1_sweep_shift;
-                    if (chan1_sweep_inc) {
-                        int new_freq = (int)chan1_freq + adjust;
-                        if (new_freq >= 0x800) {
-                            chan1_sweep_active = false;
-                            chan1_active = false;
-                        } else {
-                            chan1_freq = (u16)(new_freq & 0x7FF);
-                        }
-                    } else {
-                        int new_freq = (int)chan1_freq - adjust;
-                        if (new_freq < 0) {
-                            chan1_sweep_active = false;
-                            chan1_active = false;
-                        } else {
-                            chan1_freq = (u16)(new_freq & 0x7FF);
-                        }
-                    }
+            sq1.RunSweep();
 
-                    chan1_sweep_period = chan1_sweep_freq;
-                }
-                else
-                {
-                    --chan1_sweep_period;
-                }
-            }
-        }
-
-        // Advance enveloppe
-        if ((audio_clock & 16383) == 0)
-        {
-            if (chan1_env_period > 0 && chan1_env_freq)
+            // Advance enveloppe
+            if ((audio_clock & 16383) == 0)
             {
-                --chan1_env_period;
-                if (chan1_env_period == 0)
-                {
-                    if (chan1_env_inc)
-                    {
-                        if (chan1_vol < 15)
-                        {
-                            ++chan1_vol;
-                        }
-                        if (chan1_vol < 15)
-                        {
-                            chan1_env_period = chan1_env_freq;
-                        }
-                        else
-                        {
-                            chan1_env_period = 0;
-                        }
-                    }
-                    else
-                    {
-                        if (chan1_vol > 0)
-                        {
-                            --chan1_vol;
-                        }
-                        if (chan1_vol > 0)
-                        {
-                            chan1_env_period = chan1_env_freq;
-                        }
-                        else
-                        {
-                            chan1_env_period = 0;
-                            chan1_active = false;
-                        }
-                    }
-                }
-            }
-
-            if (chan2_env_period > 0 && chan2_env_freq)
-            {
-                --chan2_env_period;
-                if (chan2_env_period == 0)
-                {
-                    if (chan2_env_inc)
-                    {
-                        if (chan2_vol < 15)
-                        {
-                            ++chan2_vol;
-                        }
-                        if (chan2_vol < 15)
-                        {
-                            chan2_env_period = chan2_env_freq;
-                        }
-                        else
-                        {
-                            chan2_env_period = 0;
-                        }
-                    }
-                    else
-                    {
-                        if (chan2_vol > 0)
-                        {
-                            --chan2_vol;
-                        }
-                        if (chan2_vol > 0)
-                        {
-                            chan2_env_period = chan2_env_freq;
-                        }
-                        else
-                        {
-                            chan2_env_period = 0;
-                            chan2_active = false;
-                        }
-                    }
-                }
-            }
-
-            if (chan4_env_period > 0 && chan4_env_freq)
-            {
-                --chan4_env_period;
-                if (chan4_env_period == 0)
-                {
-                    if (chan4_env_inc)
-                    {
-                        if (chan4_vol < 15)
-                        {
-                            ++chan4_vol;
-                        }
-                        if (chan4_vol < 15)
-                        {
-                            chan4_env_period = chan4_env_freq;
-                        }
-                        else
-                        {
-                            chan4_env_period = 0;
-                        }
-                    }
-                    else
-                    {
-                        if (chan4_vol > 0)
-                        {
-                            --chan4_vol;
-                        }
-                        if (chan4_vol > 0)
-                        {
-                            chan4_env_period = chan4_env_freq;
-                        }
-                        else
-                        {
-                            chan4_env_period = 0;
-                            chan4_active = false;
-                        }
-                    }
-                }
+                sq1.RunEnv(sq1.m_env);
+                sq2.RunEnv(sq2.m_env);
+                noise.RunEnv(noise.m_env);
             }
         }
     }
 
 
     // Channel 1
-    if (chan1_active)
-    {
-        if (chan1_period == 0)
-        {
-            chan1_phase = (chan1_phase + 1) & 7;
-            switch(chan1_duty)
-            {
-            case 0: chan1_out = chan1_phase == 6; break;
-            case 1: chan1_out = chan1_phase >= 6; break;
-            case 2: chan1_out = chan1_phase >= 4; break;
-            case 3: chan1_out = chan1_phase <= 5; break;
-            }
-            chan1_period = 2048 - chan1_freq;
-        } else {
-            --chan1_period;
-        }
-    }
+    sq1.RunSquare(sq1.m_sq);
 
     // Channel 2
-    if (chan2_active)
-    {
-        if (chan2_period == 0)
-        {
-            chan2_phase = (chan2_phase + 1) & 7;
-            switch(chan2_duty)
-            {
-            case 0: chan2_out = chan2_phase == 6; break;
-            case 1: chan2_out = chan2_phase >= 6; break;
-            case 2: chan2_out = chan2_phase >= 4; break;
-            case 3: chan2_out = chan2_phase <= 5; break;
-            }
-            chan2_period = 2048 - chan2_freq;
-        } else {
-            --chan2_period;
-        }
-    }
+    sq2.RunSquare(sq2.m_sq);
 
     // Channel 3
-    if (chan3_active)
-    {
-        for (int i = 0;i < 2; ++i)
-        {
-            if (chan3_period == 0)
-            {
-                chan3_phase = (chan3_phase + 1) & 31;
-
-                u8 val = AUD3WAVERAM[chan3_phase >> 1];
-                if (chan3_phase & 1) {
-                    val = val & 0x0F;
-                } else {
-                    val = val >> 4;
-                }
-
-                chan3_val = 256 * (int)(val >> chan3_vol);
-
-                chan3_period = 2048 - chan3_freq;
-            } else {
-                --chan3_period;
-            }
-        }
-    }
+    wave.RunWave(*this);
+    wave.RunWave(*this);
 
     // Channel 4
-    if (chan4_active)
-    {
-        if (chan4_period == 0)
-        {
-            chan4_period = (int)chan4_div << (int)chan4_freq;
-            if (chan4_freq < 14)
-            {
-                if (chan4_7bits) {
-                    chan4_out = (((chan4_lfsr & 0x40) >> 6) ^ 1) != 0;
-                    chan4_lfsr = (chan4_lfsr << 1) | (((chan4_lfsr & 0x40) >> 6) ^ ((chan4_lfsr & 0x20) >> 5));
-                } else {
-                    chan4_out = (((chan4_lfsr & 0x4000) >> 14) ^ 1) != 0;
-                    chan4_lfsr = (chan4_lfsr << 1) | (((chan4_lfsr & 0x4000) >> 14) ^ ((chan4_lfsr & 0x2000) >> 13));
-                }
-            }
-        } else {
-            --chan4_period;
-        }
-    }
+    noise.RunNoise();
 
     ++audio_clock;
     if ((audio_clock & 31) == 0) {
         auto& sample = audio_buf[audio_pos & AUDIO_BUF_SIZE_MASK];
         ++audio_pos;
 
-        i16 chan1 = (chan1_active && chan1_out) ? (int)chan1_vol * 256 : 0;
-        i16 chan2 = (chan2_active && chan2_out) ? (int)chan2_vol * 256 : 0;
-        i16 chan3 = chan3_active ? chan3_val : 0;
-        i16 chan4 = (chan4_active && chan4_out) ? (int)chan4_vol * 256 : 0;
+        i16 chan1 = (sq1.m_active && sq1.m_out_val) ? (int)sq1.m_env.vol * 256 : 0;
+        i16 chan2 = (sq2.m_active && sq2.m_out_val) ? (int)sq2.m_env.vol * 256 : 0;
+        i16 chan3 = wave.m_active ? (int)wave.m_out_val * 256: 0;
+        i16 chan4 = (noise.m_active && noise.m_out_val) ? (int)noise.m_env.vol * 256 : 0;
 
         i16 left = 0;
         i16 right = 0;
@@ -2275,146 +2070,144 @@ u8 Audio::RegAccess<Access::Write>(const u8 addr, const u8 v)
     {
     case 0x10:
         NR10 = v;
-        chan1_sweep_freq = (v >> 4) & 0x7;
-        chan1_sweep_inc = (v & 7) == 0;
-        chan1_sweep_shift = v & 7;
+        sq1.m_sweep.freq = (v >> 4) & 0x7;
+        sq1.m_sweep.inc = (v & 7) == 0;
+        sq1.m_sweep.shift = v & 7;
         break;
     case 0x11:
         NR11 = v;
-        chan1_duty = v >> 6;
-        chan1_lenght = 64 - (int)(v & 63);
+        sq1.m_sq.duty = v >> 6;
+        sq1.m_lenght = 64 - (int)(v & 63);
         break;
     case 0x12:
         NR12 = v;
-        chan1_init_vol = v >> 4;
-        chan1_env_inc = (v & 0x08) != 0;
-        chan1_env_freq = v & 7;
-        if (!chan1_init_vol && !(chan1_env_freq && chan1_env_inc))
+        sq1.m_env.init_vol = v >> 4;
+        sq1.m_env.inc = (v & 0x08) != 0;
+        sq1.m_env.freq = v & 7;
+        if (!sq1.m_env.init_vol && !(sq1.m_env.freq && sq1.m_env.inc))
         {
-            chan1_active = false;
+            sq1.m_active = false;
         }
         break;
     case 0x13:
         NR13 = v; // TODO : coud be removed since write only
-        chan1_freq = (chan1_freq & 0x700) | v;
+        sq1.m_freq = (sq1.m_freq & 0x700) | v;
         break;
     case 0x14:
         NR14 = v;
-        chan1_freq = (chan1_freq & 0xff) | ((v & 7) << 8);
-        chan1_use_lenght = (v & 0x40) != 0;
+        sq1.m_freq = (sq1.m_freq & 0xff) | ((v & 7) << 8);
+        sq1.m_use_lenght = (v & 0x40) != 0;
         if (v & 0x80) {
-            chan1_active = chan1_init_vol || (chan1_env_freq && chan1_env_inc);
-            chan1_period = 2048 - chan1_freq;
-            chan1_phase = 0;
-            chan1_env_period = chan1_env_freq;
-            chan1_vol = chan1_init_vol;
-            if (chan1_sweep_freq) {
-                chan1_sweep_period = chan1_sweep_freq;
-                chan1_sweep_freq_int = chan1_freq;
-                chan1_sweep_active = true;
+            sq1.m_active = sq1.m_env.init_vol || (sq1.m_env.freq && sq1.m_env.inc);
+            sq1.m_period = 2048 - sq1.m_freq;
+            sq1.m_env.period = sq1.m_env.freq;
+            sq1.m_env.vol = sq1.m_env.init_vol;
+            if (sq1.m_sweep.freq) {
+                sq1.m_sweep.period = sq1.m_sweep.freq;
+                sq1.m_sweep.freq_int = sq1.m_freq;
+                sq1.m_sweep.active = true;
             }
         }
         break;
     case 0x16:
         NR21 = v;
-        chan2_duty = v >> 6;
-        chan2_lenght = 64 - (int)(v & 63);
+        sq2.m_sq.duty = v >> 6;
+        sq2.m_lenght = 64 - (int)(v & 63);
         break;
     case 0x17:
         NR22 = v;
-        chan2_init_vol = v >> 4;
-        chan2_env_inc = (v & 0x08) != 0;
-        chan2_env_freq = v & 7;
-        if (!chan2_init_vol && !(chan2_env_freq && chan2_env_inc))
+        sq2.m_env.init_vol = v >> 4;
+        sq2.m_env.inc = (v & 0x08) != 0;
+        sq2.m_env.freq = v & 7;
+        if (!sq2.m_env.init_vol && !(sq2.m_env.freq && sq2.m_env.inc))
         {
-            chan2_active = false;
+            sq2.m_active = false;
         }
         break;
     case 0x18:
         NR23 = v; // TODO : coud be removed since write only
-        chan2_freq = (chan2_freq & 0x700) | v;
+        sq2.m_freq = (sq2.m_freq & 0x700) | v;
         break;
     case 0x19:
         NR24 = v;
-        chan2_freq = (chan2_freq & 0xff) | ((v & 7) << 8);
-        chan2_use_lenght = (v & 0x40) != 0;
+        sq2.m_freq = (sq2.m_freq & 0xff) | ((v & 7) << 8);
+        sq2.m_use_lenght = (v & 0x40) != 0;
         if (v & 0x80) {
-            chan2_active = chan2_init_vol || (chan2_env_freq && chan2_env_inc);
-            chan2_period = 2048 - chan2_freq;
-            chan2_phase = 0;
-            chan2_env_period = chan2_env_freq;
-            chan2_vol = chan2_init_vol;
+            sq2.m_active = sq2.m_env.init_vol || (sq2.m_env.freq && sq2.m_env.inc);
+            sq2.m_period = 2048 - sq2.m_freq;
+            sq2.m_env.period = sq2.m_env.freq;
+            sq2.m_env.vol = sq2.m_env.init_vol;
         }
         break;
     case 0x1a:
         NR30 = v;
-        chan3_enable = (v & 0x80) != 0;
-        if (!chan3_enable)
+        wave.m_enable = (v & 0x80) != 0;
+        if (!wave.m_enable)
         {
-            chan3_active = false;
+            wave.m_active = false;
         }
         break;
     case 0x1b:
         NR31 = v;   // TODO : could be removed
-        chan3_lenght = 256 - (int)v;
+        wave.m_lenght = 256 - (int)v;
         break;
     case 0x1c:
         NR32 = v;
         switch ((v >> 5) & 3)
         {
-        case 0: chan3_vol = 4; break;
-        case 1: chan3_vol = 0; break;
-        case 2: chan3_vol = 1; break;
-        case 3: chan3_vol = 2; break;
+        case 0: wave.m_vol_shift = 4; break;
+        case 1: wave.m_vol_shift = 0; break;
+        case 2: wave.m_vol_shift = 1; break;
+        case 3: wave.m_vol_shift = 2; break;
         }
         break;
     case 0x1d:
         NR33 = v; // TODO : coud be removed since write only
-        chan3_freq = (chan3_freq & 0x700) | v;
+        wave.m_freq = (wave.m_freq & 0x700) | v;
         break;
     case 0x1e:
         NR34 = v;
-        chan3_freq = (chan3_freq & 0xff) | ((v & 7) << 8);
-        chan3_use_lenght = (v & 0x40) != 0;
+        wave.m_freq = (wave.m_freq & 0xff) | ((v & 7) << 8);
+        wave.m_use_lenght = (v & 0x40) != 0;
         if (v & 0x80)
         {
-            chan3_active = chan3_enable;
-            chan3_period = 2048 - chan3_freq;
-            chan3_phase = 0;
+            wave.m_active = wave.m_enable;
+            wave.m_period = 2048 - wave.m_freq;
+            wave.m_phase = 0;
         }
         break;
     case 0x20:
         NR41 = v;
-        chan4_lenght = (int)(v & 0x3f);
+        noise.m_lenght = (int)(v & 0x3f);
         break;
     case 0x21:
         NR42 = v;
-        chan4_init_vol = v >> 4;
-        chan4_env_inc = (v & 0x08) != 0;
-        chan4_env_freq = v & 7;
-        if (!chan4_init_vol && !(chan4_env_freq && chan4_env_inc))
+        noise.m_env.init_vol = v >> 4;
+        noise.m_env.inc = (v & 0x08) != 0;
+        noise.m_env.freq = v & 7;
+        if (!noise.m_env.init_vol && !(noise.m_env.freq && noise.m_env.inc))
         {
-            chan4_active = false;
+            noise.m_active = false;
         }
         break;
     case 0x22:
         NR43 = v;
-        chan4_freq = (v & 0xF0) >> 4;
-        chan4_7bits = (v & 8) != 0;
-        chan4_div = (v & 7) << 2;
-        if (chan4_div == 0) {
-            chan4_div = 2;
+        noise.m_freq = (v & 0xF0) >> 4;
+        noise.m_use7bits = (v & 8) != 0;
+        noise.m_div = (v & 7) << 2;
+        if (noise.m_div == 0) {
+            noise.m_div = 2;
         }
-        chan4_period = (int)chan4_div << (int)chan4_freq;
+        noise.m_period = (int)noise.m_div << (int)noise.m_freq;
         break;
     case 0x23:
         NR44 = v;
-        chan4_use_lenght = (v & 0x40) != 0;
+        noise.m_use_lenght = (v & 0x40) != 0;
         if (v & 0x80) {
-            chan4_active = chan4_init_vol || (chan4_env_freq && chan4_env_inc);
-            chan4_env_period = chan4_env_freq;
-            chan4_vol = chan4_init_vol;
-            chan4_lfsr = 0xFFFF;
+            noise.m_active = noise.m_env.init_vol || (noise.m_env.freq && noise.m_env.inc);
+            noise.m_env.period = noise.m_env.freq;
+            noise.m_env.vol = noise.m_env.init_vol;
+            noise.m_lfsr = 0xFFFF;
         }
         break;
     case 0x24:
@@ -2428,6 +2221,163 @@ u8 Audio::RegAccess<Access::Write>(const u8 addr, const u8 v)
     }
 
     return 0xff;
+}
+
+void SoundChannel::RunLenght()
+{
+    if (m_lenght > 0){
+        --m_lenght;
+        if (m_lenght == 0 && m_use_lenght)
+        {
+            m_active = false;
+        }
+    }
+}
+
+void SoundChannel::RunEnv(SoundEnv & rEnv)
+{
+    if (rEnv.period > 0 && rEnv.freq)
+    {
+        --rEnv.period;
+        if (rEnv.period == 0)
+        {
+            if (rEnv.inc)
+            {
+                if (rEnv.vol < 15)
+                {
+                    ++rEnv.vol;
+                }
+                if (rEnv.vol < 15)
+                {
+                    rEnv.period = rEnv.freq;
+                }
+                else
+                {
+                    rEnv.period = 0;
+                }
+            }
+            else
+            {
+                if (rEnv.vol > 0)
+                {
+                    --rEnv.vol;
+                }
+                if (rEnv.vol > 0)
+                {
+                    rEnv.period = rEnv.freq;
+                }
+                else
+                {
+                    rEnv.period = 0;
+                    m_active = false;
+                }
+            }
+        }
+    }
+}
+
+void SoundChannel::RunSquare(SquareWave & rSq)
+{
+    if (m_active)
+    {
+        if (m_period == 0)
+        {
+            rSq.phase = (rSq.phase + 1) & 7;
+            bool out = false;
+            switch(rSq.duty)
+            {
+            case 0: out = rSq.phase == 6; break;
+            case 1: out = rSq.phase >= 6; break;
+            case 2: out = rSq.phase >= 4; break;
+            case 3: out = rSq.phase <= 5; break;
+            }
+            m_out_val = out ? 1 : 0;
+            m_period = 2048 - m_freq;
+        } else {
+            --m_period;
+        }
+    }
+}
+
+void Square1::RunSweep()
+{
+    if (m_sweep.active)
+    {
+        if (m_sweep.period == 0)
+        {
+            int adjust = (int)m_sweep.freq_int >> m_sweep.shift;
+            if (m_sweep.inc) {
+                int new_freq = (int)m_freq + adjust;
+                if (new_freq >= 0x800) {
+                    m_sweep.active = false;
+                    m_active = false;
+                } else {
+                    m_freq = (u16)(new_freq & 0x7FF);
+                }
+            } else {
+                int new_freq = (int)m_freq - adjust;
+                if (new_freq < 0) {
+                    m_sweep.active = false;
+                    m_active = false;
+                } else {
+                    m_freq = (u16)(new_freq & 0x7FF);
+                }
+            }
+
+            m_sweep.period = m_sweep.freq;
+        }
+        else
+        {
+            --m_sweep.period;
+        }
+    }
+}
+
+void SoundWave::RunWave(Audio& rAudio)
+{
+    if (m_active)
+    {
+        if (m_period == 0)
+        {
+            m_phase = (m_phase + 1) & 31;
+
+            u8 val = rAudio.AUD3WAVERAM[m_phase >> 1];
+            if (m_phase & 1) {
+                val = val & 0x0F;
+            } else {
+                val = val >> 4;
+            }
+
+            m_out_val = val >> m_vol_shift;
+
+            m_period = 2048 - m_freq;
+        } else {
+            --m_period;
+        }
+    }
+}
+
+void Noise::RunNoise()
+{
+    if (m_active)
+    {
+        if (m_period == 0)
+        {
+            m_period = (int)m_div << (int)m_freq;
+            if (m_freq < 14)
+            {
+                if (m_use7bits) {
+                    m_out_val = (((m_lfsr & 0x40) >> 6) ^ 1);
+                    m_lfsr = (m_lfsr << 1) | (((m_lfsr & 0x40) >> 6) ^ ((m_lfsr & 0x20) >> 5));
+                } else {
+                    m_out_val = (((m_lfsr & 0x4000) >> 14) ^ 1);
+                    m_lfsr = (m_lfsr << 1) | (((m_lfsr & 0x4000) >> 14) ^ ((m_lfsr & 0x2000) >> 13));
+                }
+            }
+        } else {
+            --m_period;
+        }
+    }
 }
 
 } // namespce GB

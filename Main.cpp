@@ -140,6 +140,7 @@ int main(int argc, char* argv[])
 
     bool bUseSDL = true;
     bool bUseVSync = false;
+    int speed_factor = 1;
 
     const char* file_name = nullptr;
     if (argc > 1)
@@ -189,6 +190,30 @@ int main(int argc, char* argv[])
     //file_name = R"(D:\emu\gb\V-Rally - Championship Edition (Europe) (En,Fr,De).gb)";
     //file_name = R"(D:\emu\gb\Metroid II - Return of Samus (World).gb)";
     //file_name = R"(D:\emu\gb\Wario Land - Super Mario Land 3 (World).gb)";
+
+    //file_name = R"(D:\emu\gb\Tests\cpu_instrs\cpu_instrs.gb)";
+    //file_name = R"(D:\emu\gb\Tests\instr_timing\instr_timing.gb)";
+
+    //file_name = R"(D:\emu\gb\Tests\dmg_sound\dmg_sound.gb)";
+
+    
+    //file_name = R"(D:\emu\gb\Tests\dmg_sound\rom_singles\01-registers.gb)";
+    //file_name = R"(D:\emu\gb\Tests\dmg_sound\rom_singles\02-len ctr.gb)";
+    //file_name = R"(D:\emu\gb\Tests\dmg_sound\rom_singles\03-trigger.gb)";
+    //file_name = R"(D:\emu\gb\Tests\dmg_sound\rom_singles\04-sweep.gb)";
+    //file_name = R"(D:\emu\gb\Tests\dmg_sound\rom_singles\05-sweep details.gb)";
+    //file_name = R"(D:\emu\gb\Tests\dmg_sound\rom_singles\06-overflow on trigger.gb)";
+    //file_name = R"(D:\emu\gb\Tests\dmg_sound\rom_singles\07-len sweep period sync.gb)";
+    //file_name = R"(D:\emu\gb\Tests\dmg_sound\rom_singles\08-len ctr during power.gb)";
+    //file_name = R"(D:\emu\gb\Tests\dmg_sound\rom_singles\09-wave read while on.gb)";
+    //file_name = R"(D:\emu\gb\Tests\dmg_sound\rom_singles\10-wave trigger while on.gb)";
+    //file_name = R"(D:\emu\gb\Tests\dmg_sound\rom_singles\11-regs after power.gb)";
+    //file_name = R"(D:\emu\gb\Tests\dmg_sound\rom_singles\12-wave write while on.gb)";
+
+
+
+    //file_name = R"()";
+
     ifstream file(file_name, ios::binary | ios::ate);
     streamsize size = file.tellg();
 
@@ -317,6 +342,9 @@ int main(int argc, char* argv[])
                 else if (eAction == Action::KeyUpdate)
                 {
                     gb.UpdateKeys(g_keys);
+#ifndef _DEBUG
+                    printf(""); // Workaround weird SDL bug
+#endif
                 }
 
             } while (eAction != Action::None);
@@ -356,9 +384,9 @@ int main(int argc, char* argv[])
 
         auto elapsed = time_now - run_time;
 
-        auto emu_elapsed = gb.RunTime(duration_cast<nanoseconds>(elapsed));
+        auto emu_elapsed = gb.RunTime(duration_cast<nanoseconds>(elapsed) * speed_factor);
 
-        run_time += emu_elapsed;
+        run_time += emu_elapsed / speed_factor;
 
         if (start_time + seconds(1) < time_now)
         {
