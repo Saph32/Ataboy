@@ -1456,6 +1456,12 @@ u8 IO::RegAccess(System& rSystem, const u8 addr, const u8 v)
     STD_REG(0x0f, rSystem.m_cpu.IF.value);
     case 0x40 : 
         if (eAccess == Access::Write) {
+            if (!rSystem.m_video.LCDC.bits.lcden && (v & 0x80)) {
+                // Restart video
+                rSystem.m_video.m_mode = 0;
+                rSystem.m_video.LY = 144;
+                rSystem.m_video.LCDX = 0;
+            }
             rSystem.m_video.LCDC.value = v;
         } else {
             return rSystem.m_video.LCDC.value;
@@ -1618,6 +1624,11 @@ void Video::Reset()
 
 void Video::Tick(System & rSystem)
 {
+    if (!LCDC.bits.lcden) {
+        // TODO : Render disabled
+        return;
+    }
+
     switch(m_mode)
     {
     case 0 : 
