@@ -380,6 +380,7 @@ public:
 
     void Reset(Audio& rAudio);
     void RunSweep();
+    void ComputeSweep(bool write_freq_reg);
 };
 
 class Square2 : public SoundChannel
@@ -768,9 +769,11 @@ void CPU::ALU(System& rSystem)
 #pragma warning( push )
 #pragma warning( disable : 4127 )   // warning C4127: conditional expression is constant
 
+
     bool carry = (alu == ADC || alu == SBC);
     bool sub = !(alu == ADD || alu == ADC);
     size_t t = GetOperand8<src>(rSystem);
+
     if (sub) {
         R.F.H = (((R.af8.A & 0xf) - (t & 0xf) - (carry ? R.F.C : 0)) >> 4) & 1;
         t = R.af8.A - t - (carry ? R.F.C : 0);
@@ -1942,6 +1945,12 @@ void Audio::Reset()
     RegAccess<Access::Write>(0x23, 0xBF);
     RegAccess<Access::Write>(0x24, 0x77);
     RegAccess<Access::Write>(0x25, 0xF3);
+
+    // Disable boot up sound
+    sq1.m_active = false;
+    sq2.m_active = false;
+    wave.m_active = false;
+    noise.m_active = false;
 }
 
 void Audio::Tick(System &)
@@ -2072,10 +2081,10 @@ u8 Audio::RegAccess<Access::Read>(const u8 addr, const u8)
     case 0x26:
         if (m_master_enable) {
             return 0xF0 |
-                ((!sq1.m_use_lenght || sq1.m_lenght) ? 0x01 : 0) |
-                ((!sq2.m_use_lenght || sq2.m_lenght) ? 0x02 : 0) |
-                ((!wave.m_use_lenght || wave.m_lenght) ? 0x04 : 0) |
-                ((!noise.m_use_lenght || noise.m_lenght) ? 0x08 : 0);
+                (sq1.m_active ? 0x01 : 0) |
+                (sq2.m_active ? 0x02 : 0) |
+                (wave.m_active ? 0x04 : 0) |
+                (noise.m_active ? 0x08 : 0);
         } else {
             return 0x70;
         }
@@ -2115,10 +2124,6 @@ u8 Audio::RegAccess<Access::Write>(const u8 addr, const u8 v)
         sq1.m_env.init_vol = v >> 4;
         sq1.m_env.inc = (v & 0x08) != 0;
         sq1.m_env.freq = v & 7;
-        if (!sq1.m_env.init_vol && !(sq1.m_env.freq && sq1.m_env.inc))
-        {
-            sq1.m_active = false;
-        }
         break;
     case 0x13:
         NR13 = v; // TODO : coud be removed since write only
@@ -2129,14 +2134,18 @@ u8 Audio::RegAccess<Access::Write>(const u8 addr, const u8 v)
         sq1.m_freq = (sq1.m_freq & 0xff) | ((v & 7) << 8);
         sq1.m_use_lenght = (v & 0x40) != 0;
         if (v & 0x80) {
-            sq1.m_active = sq1.m_env.init_vol || (sq1.m_env.freq && sq1.m_env.inc);
+            sq1.m_active = true;
             sq1.m_period = 2048 - sq1.m_freq;
             sq1.m_env.period = sq1.m_env.freq;
             sq1.m_env.vol = sq1.m_env.init_vol;
-            if (sq1.m_sweep.freq) {
+            if (sq1.m_sweep.freq || sq1.m_sweep.shift) {
                 sq1.m_sweep.period = sq1.m_sweep.freq;
                 sq1.m_sweep.freq_int = sq1.m_freq;
                 sq1.m_sweep.active = true;
+                if (sq1.m_sweep.shift) {
+                    const bool DONT_WRITE_FREQ_REG = false;
+                    sq1.ComputeSweep(DONT_WRITE_FREQ_REG);
+                }
             }
         }
         break;
@@ -2150,10 +2159,6 @@ u8 Audio::RegAccess<Access::Write>(const u8 addr, const u8 v)
         sq2.m_env.init_vol = v >> 4;
         sq2.m_env.inc = (v & 0x08) != 0;
         sq2.m_env.freq = v & 7;
-        if (!sq2.m_env.init_vol && !(sq2.m_env.freq && sq2.m_env.inc))
-        {
-            sq2.m_active = false;
-        }
         break;
     case 0x18:
         NR23 = v; // TODO : coud be removed since write only
@@ -2164,7 +2169,7 @@ u8 Audio::RegAccess<Access::Write>(const u8 addr, const u8 v)
         sq2.m_freq = (sq2.m_freq & 0xff) | ((v & 7) << 8);
         sq2.m_use_lenght = (v & 0x40) != 0;
         if (v & 0x80) {
-            sq2.m_active = sq2.m_env.init_vol || (sq2.m_env.freq && sq2.m_env.inc);
+            sq2.m_active = true;
             sq2.m_period = 2048 - sq2.m_freq;
             sq2.m_env.period = sq2.m_env.freq;
             sq2.m_env.vol = sq2.m_env.init_vol;
@@ -2173,8 +2178,7 @@ u8 Audio::RegAccess<Access::Write>(const u8 addr, const u8 v)
     case 0x1a:
         NR30 = v;
         wave.m_enable = (v & 0x80) != 0;
-        if (!wave.m_enable)
-        {
+        if (!wave.m_enable) {
             wave.m_active = false;
         }
         break;
@@ -2216,10 +2220,6 @@ u8 Audio::RegAccess<Access::Write>(const u8 addr, const u8 v)
         noise.m_env.init_vol = v >> 4;
         noise.m_env.inc = (v & 0x08) != 0;
         noise.m_env.freq = v & 7;
-        if (!noise.m_env.init_vol && !(noise.m_env.freq && noise.m_env.inc))
-        {
-            noise.m_active = false;
-        }
         break;
     case 0x22:
         NR43 = v;
@@ -2235,7 +2235,7 @@ u8 Audio::RegAccess<Access::Write>(const u8 addr, const u8 v)
         NR44 = v;
         noise.m_use_lenght = (v & 0x40) != 0;
         if (v & 0x80) {
-            noise.m_active = noise.m_env.init_vol || (noise.m_env.freq && noise.m_env.inc);
+            noise.m_active = true;
             noise.m_env.period = noise.m_env.freq;
             noise.m_env.vol = noise.m_env.init_vol;
             noise.m_lfsr = 0xFFFF;
@@ -2290,38 +2290,29 @@ void SoundChannel::RunLenght()
 
 void SoundChannel::RunEnv(SoundEnv & rEnv)
 {
-    if (rEnv.period > 0 && rEnv.freq)
-    {
+    if (!m_active) {
+        return;
+    }
+
+    if (rEnv.period > 0 && rEnv.freq) {
         --rEnv.period;
-        if (rEnv.period == 0)
-        {
-            if (rEnv.inc)
-            {
-                if (rEnv.vol < 15)
-                {
+        if (rEnv.period == 0) {
+            if (rEnv.inc) {
+                if (rEnv.vol < 15) {
                     ++rEnv.vol;
                 }
-                if (rEnv.vol < 15)
-                {
+
+                if (rEnv.vol < 15) {
                     rEnv.period = rEnv.freq;
-                }
-                else
-                {
+                } else {
                     rEnv.period = 0;
                 }
-            }
-            else
-            {
-                if (rEnv.vol > 0)
-                {
+            } else {
+                if (rEnv.vol > 0) {
                     --rEnv.vol;
-                }
-                if (rEnv.vol > 0)
-                {
+                } if (rEnv.vol > 0) {
                     rEnv.period = rEnv.freq;
-                }
-                else
-                {
+                } else {
                     rEnv.period = 0;
                     m_active = false;
                 }
@@ -2332,24 +2323,24 @@ void SoundChannel::RunEnv(SoundEnv & rEnv)
 
 void SoundChannel::RunSquare(SquareWave & rSq)
 {
-    if (m_active)
-    {
-        if (m_period == 0)
+    if (!m_active) {
+        return;
+    }
+
+    if (m_period == 0) {
+        rSq.phase = (rSq.phase + 1) & 7;
+        bool out = false;
+        switch(rSq.duty)
         {
-            rSq.phase = (rSq.phase + 1) & 7;
-            bool out = false;
-            switch(rSq.duty)
-            {
-            case 0: out = rSq.phase == 6; break;
-            case 1: out = rSq.phase >= 6; break;
-            case 2: out = rSq.phase >= 4; break;
-            case 3: out = rSq.phase <= 5; break;
-            }
-            m_out_val = out ? 1 : 0;
-            m_period = 2048 - m_freq;
-        } else {
-            --m_period;
+        case 0: out = rSq.phase == 6; break;
+        case 1: out = rSq.phase >= 6; break;
+        case 2: out = rSq.phase >= 4; break;
+        case 3: out = rSq.phase <= 5; break;
         }
+        m_out_val = out ? 1 : 0;
+        m_period = 2048 - m_freq;
+    } else {
+        --m_period;
     }
 }
 
@@ -2375,36 +2366,40 @@ void Square1::Reset(Audio & rAudio)
 
 void Square1::RunSweep()
 {
-    if (m_sweep.active)
-    {
-        if (m_sweep.period == 0)
-        {
-            int adjust = (int)m_sweep.freq_int >> m_sweep.shift;
-            if (m_sweep.inc) {
-                int new_freq = (int)m_freq + adjust;
-                if (new_freq >= 0x800) {
-                    m_sweep.active = false;
-                    m_active = false;
-                } else {
-                    m_freq = (u16)(new_freq & 0x7FF);
-                    m_period = 2048 - m_freq;
-                }
-            } else {
-                int new_freq = (int)m_freq - adjust;
-                if (new_freq < 0) {
-                    m_sweep.active = false;
-                    m_active = false;
-                } else {
-                    m_freq = (u16)(new_freq & 0x7FF);
-                    m_period = 2048 - m_freq;
-                }
-            }
+    if (!m_active || !m_sweep.active) {
+        return;
+    }
 
-            m_sweep.period = m_sweep.freq;
+    if (m_sweep.period <= 1) {
+        const bool WRITE_TO_FREQ_REG = true;
+        ComputeSweep(WRITE_TO_FREQ_REG);
+
+        m_sweep.period = m_sweep.freq;
+    } else {
+        --m_sweep.period;
+    }
+}
+
+void Square1::ComputeSweep(bool write_freq_reg)
+{
+    int adjust = (int)m_sweep.freq_int >> m_sweep.shift;
+    if (m_sweep.inc) {
+        int new_freq = (int)m_freq + adjust;
+        if (new_freq >= 0x800) {
+            m_sweep.active = false;
+            m_active = false;
+        } else if (write_freq_reg && m_sweep.shift){
+            m_freq = (u16)(new_freq & 0x7FF);
+            m_period = 2048 - m_freq;
         }
-        else
-        {
-            --m_sweep.period;
+    } else {
+        int new_freq = (int)m_freq - adjust;
+        if (new_freq < 0) {
+            m_sweep.active = false;
+            m_active = false;
+        } else if (write_freq_reg && m_sweep.shift){
+            m_freq = (u16)(new_freq & 0x7FF);
+            m_period = 2048 - m_freq;
         }
     }
 }
@@ -2439,25 +2434,25 @@ void SoundWave::Reset(Audio & rAudio)
 
 void SoundWave::RunWave(Audio& rAudio)
 {
-    if (m_active)
-    {
-        if (m_period == 0)
-        {
-            m_phase = (m_phase + 1) & 31;
+    if (!m_active) {
+        return;
+    }
 
-            u8 val = rAudio.AUD3WAVERAM[m_phase >> 1];
-            if (m_phase & 1) {
-                val = val & 0x0F;
-            } else {
-                val = val >> 4;
-            }
+    if (m_period == 0) {
+        m_phase = (m_phase + 1) & 31;
 
-            m_out_val = val >> m_vol_shift;
-
-            m_period = 2048 - m_freq;
+        u8 val = rAudio.AUD3WAVERAM[m_phase >> 1];
+        if (m_phase & 1) {
+            val = val & 0x0F;
         } else {
-            --m_period;
+            val = val >> 4;
         }
+
+        m_out_val = val >> m_vol_shift;
+
+        m_period = 2048 - m_freq;
+    } else {
+        --m_period;
     }
 }
 
@@ -2477,24 +2472,23 @@ void Noise::Reset(Audio & rAudio)
 
 void Noise::RunNoise()
 {
-    if (m_active)
-    {
-        if (m_period == 0)
-        {
-            m_period = (int)m_div << (int)m_freq;
-            if (m_freq < 14)
-            {
-                if (m_use7bits) {
-                    m_out_val = (((m_lfsr & 0x40) >> 6) ^ 1);
-                    m_lfsr = (m_lfsr << 1) | (((m_lfsr & 0x40) >> 6) ^ ((m_lfsr & 0x20) >> 5));
-                } else {
-                    m_out_val = (((m_lfsr & 0x4000) >> 14) ^ 1);
-                    m_lfsr = (m_lfsr << 1) | (((m_lfsr & 0x4000) >> 14) ^ ((m_lfsr & 0x2000) >> 13));
-                }
+    if (!m_active) {
+        return;
+    }
+
+    if (m_period == 0) {
+        m_period = (int)m_div << (int)m_freq;
+        if (m_freq < 14) {
+            if (m_use7bits) {
+                m_out_val = (((m_lfsr & 0x40) >> 6) ^ 1);
+                m_lfsr = (m_lfsr << 1) | (((m_lfsr & 0x40) >> 6) ^ ((m_lfsr & 0x20) >> 5));
+            } else {
+                m_out_val = (((m_lfsr & 0x4000) >> 14) ^ 1);
+                m_lfsr = (m_lfsr << 1) | (((m_lfsr & 0x4000) >> 14) ^ ((m_lfsr & 0x2000) >> 13));
             }
-        } else {
-            --m_period;
         }
+    } else {
+        --m_period;
     }
 }
 
