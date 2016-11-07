@@ -296,7 +296,8 @@ class IO
 public:
 
     u8 P1 = 0;
-
+    u8 SB = 0;
+    u8 SC = 0;
     union {
         struct DividerReg {
             u8 low;
@@ -305,18 +306,11 @@ public:
         u16 value = 0;
     } Divider = {};
 
-    union {
-        struct TimerReg {
-            u8 low;
-            u8 TIMA;
-            u16 overflow;
-        } details; u32 value = 0;
-    } Timer = {};
-
+    u8 TIMA = 0;
     u8 TMA = 0;
     u8 TAC = 0;
 
-    u8 m_timer_inc = 0;
+    u8 m_timer_mask = 255;
 
     Keys m_keys = {};
     
@@ -1436,6 +1430,8 @@ u8 IO::RegAccess(System& rSystem, const u8 addr, const u8 v)
             return MakeP1(rSystem);
         } 
         break;
+    STD_REG(0x01, SB);
+    STD_REG(0x02, SC);
     case 0x04 :
         if (eAccess == Access::Write) {
             Divider.value = 0;
@@ -1445,9 +1441,9 @@ u8 IO::RegAccess(System& rSystem, const u8 addr, const u8 v)
         break;
     case 0x05 : 
         if (eAccess == Access::Write) {
-            Timer.details.TIMA = v;
+            TIMA = v;
         } else {
-            return Timer.details.TIMA;
+            return TIMA;
         } 
         break;
     STD_REG(0x06, TMA);
@@ -1552,10 +1548,10 @@ void CPU::Execute(System& rSystem)
 void IO::Reset()
 {
     Divider.value = 0;
-    Timer.value = 0;
+    TIMA = 0;
     TMA = 0;
     TAC = 0;
-    m_timer_inc = 1;
+    m_timer_mask = 255;
     P1 = 0x0f;
     m_keys.value = 0xff;
 }
@@ -1565,11 +1561,12 @@ void IO::Tick(System& m_rSystem)
     Divider.value += 4;
 
     if (TAC & 4) {
-        Timer.value += m_timer_inc;
-        if (Timer.details.overflow) {
-            Timer.details.overflow = 0;
-            Timer.details.TIMA = TMA;
+        if (((u8)m_rSystem.m_cycle_count & m_timer_mask) == 0)
+        if (TIMA == 255) {
+            TIMA = TMA;
             m_rSystem.m_cpu.IF.f.timer = 1;
+        } else {
+            ++TIMA;
         }
     }
 }
@@ -1592,10 +1589,10 @@ void IO::SetTAC(u8 v)
 {
     TAC = v;
     switch (v & 3) {
-    case 0 : m_timer_inc = 1; break;
-    case 1 : m_timer_inc = 64; break;
-    case 2 : m_timer_inc = 16; break;
-    case 3 : m_timer_inc = 4; break;
+    case 0 : m_timer_mask = 255; break;
+    case 1 : m_timer_mask = 3; break;
+    case 2 : m_timer_mask = 15; break;
+    case 3 : m_timer_mask = 63; break;
     }
 }
 

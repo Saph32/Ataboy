@@ -192,10 +192,10 @@ int main(int argc, char* argv[])
     //file_name = R"(D:\emu\gb\Wario Land - Super Mario Land 3 (World).gb)";
 
     //file_name = R"(D:\emu\gb\Tests\cpu_instrs\cpu_instrs.gb)";
+    //file_name = R"(D:\emu\gb\Tests\cpu_instrs\individual\02-interrupts.gb)";
     //file_name = R"(D:\emu\gb\Tests\instr_timing\instr_timing.gb)";
 
     //file_name = R"(D:\emu\gb\Tests\dmg_sound\dmg_sound.gb)";
-
     
     //file_name = R"(D:\emu\gb\Tests\dmg_sound\rom_singles\01-registers.gb)";
     //file_name = R"(D:\emu\gb\Tests\dmg_sound\rom_singles\02-len ctr.gb)";
@@ -210,7 +210,9 @@ int main(int argc, char* argv[])
     //file_name = R"(D:\emu\gb\Tests\dmg_sound\rom_singles\11-regs after power.gb)";
     //file_name = R"(D:\emu\gb\Tests\dmg_sound\rom_singles\12-wave write while on.gb)";
 
-
+    //file_name = R"(D:\emu\gb\Tests\mem_timing\mem_timing.gb)";
+    //file_name = R"(D:\emu\gb\Tests\mem_timing-2\mem_timing.gb)";
+    //file_name = R"(D:\emu\gb\Tests\interrupt_time\interrupt_time.gb)";
 
     //file_name = R"()";
 
