@@ -312,6 +312,8 @@ public:
 
     u8 m_timer_mask = 255;
 
+    u8 m_serial_bits = 0;
+
     Keys m_keys = {};
     
     void Reset();
@@ -1431,7 +1433,16 @@ u8 IO::RegAccess(System& rSystem, const u8 addr, const u8 v)
         } 
         break;
     STD_REG(0x01, SB);
-    STD_REG(0x02, SC);
+    case 0x02 :
+        if (eAccess == Access::Write) {
+            SB = v;
+            if ((v & 0x80) && (v & 1)) {
+                m_serial_bits = 8;
+            }
+        } else {
+            return 0xfe | SC;
+        }
+        break;
     case 0x04 :
         if (eAccess == Access::Write) {
             Divider.value = 0;
@@ -1573,6 +1584,14 @@ void IO::Tick(System& m_rSystem)
             m_rSystem.m_cpu.IF.f.timer = 1;
         } else {
             ++TIMA;
+        }
+    }
+
+    if (m_serial_bits) {
+        --m_serial_bits;
+        SB = SB << 1 | 1;
+        if (!m_serial_bits) {
+            m_rSystem.m_cpu.IF.f.serial = 1;
         }
     }
 }
