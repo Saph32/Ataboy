@@ -2151,6 +2151,9 @@ u8 Audio::RegAccess<Access::Write>(const u8 addr, const u8 v)
         sq1.m_env.init_vol = v >> 4;
         sq1.m_env.inc = (v & 0x08) != 0;
         sq1.m_env.freq = v & 7;
+        if (!sq1.m_env.init_vol && !sq1.m_env.inc) {
+            sq1.m_active = false;
+        }
         break;
     case 0x13:
         NR13 = v; // TODO : coud be removed since write only
@@ -2161,7 +2164,7 @@ u8 Audio::RegAccess<Access::Write>(const u8 addr, const u8 v)
         sq1.m_freq = (sq1.m_freq & 0xff) | ((v & 7) << 8);
         sq1.m_use_lenght = (v & 0x40) != 0;
         if (v & 0x80) {
-            sq1.m_active = true;
+            sq1.m_active = sq1.m_env.init_vol || sq1.m_env.inc;
             sq1.m_period = 2048 - sq1.m_freq;
             sq1.m_env.period = sq1.m_env.freq;
             sq1.m_env.vol = sq1.m_env.init_vol;
@@ -2186,6 +2189,9 @@ u8 Audio::RegAccess<Access::Write>(const u8 addr, const u8 v)
         sq2.m_env.init_vol = v >> 4;
         sq2.m_env.inc = (v & 0x08) != 0;
         sq2.m_env.freq = v & 7;
+        if (!sq2.m_env.init_vol && !sq2.m_env.inc) {
+            sq2.m_active = false;
+        }
         break;
     case 0x18:
         NR23 = v; // TODO : coud be removed since write only
@@ -2196,7 +2202,7 @@ u8 Audio::RegAccess<Access::Write>(const u8 addr, const u8 v)
         sq2.m_freq = (sq2.m_freq & 0xff) | ((v & 7) << 8);
         sq2.m_use_lenght = (v & 0x40) != 0;
         if (v & 0x80) {
-            sq2.m_active = true;
+            sq2.m_active = sq2.m_env.init_vol || sq2.m_env.inc;
             sq2.m_period = 2048 - sq2.m_freq;
             sq2.m_env.period = sq2.m_env.freq;
             sq2.m_env.vol = sq2.m_env.init_vol;
@@ -2247,6 +2253,9 @@ u8 Audio::RegAccess<Access::Write>(const u8 addr, const u8 v)
         noise.m_env.init_vol = v >> 4;
         noise.m_env.inc = (v & 0x08) != 0;
         noise.m_env.freq = v & 7;
+        if (!noise.m_env.init_vol && !noise.m_env.inc) {
+            noise.m_active = false;
+        }
         break;
     case 0x22:
         NR43 = v;
@@ -2262,7 +2271,7 @@ u8 Audio::RegAccess<Access::Write>(const u8 addr, const u8 v)
         NR44 = v;
         noise.m_use_lenght = (v & 0x40) != 0;
         if (v & 0x80) {
-            noise.m_active = true;
+            noise.m_active = noise.m_env.init_vol || noise.m_env.inc;
             noise.m_env.period = noise.m_env.freq;
             noise.m_env.vol = noise.m_env.init_vol;
             noise.m_lfsr = 0xFFFF;
@@ -2306,11 +2315,13 @@ void SoundChannel::Reset(Audio & rAudio)
 
 void SoundChannel::RunLenght()
 {
-    if (m_lenght > 0){
-        --m_lenght;
-        if (m_lenght == 0 && m_use_lenght)
-        {
-            m_active = false;
+    if (m_active && m_use_lenght) {
+        if (m_lenght > 0){
+            --m_lenght;
+            if (m_lenght == 0)
+            {
+                m_active = false;
+            }
         }
     }
 }

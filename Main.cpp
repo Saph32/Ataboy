@@ -190,6 +190,10 @@ int main(int argc, char* argv[])
     //file_name = R"(D:\emu\gb\V-Rally - Championship Edition (Europe) (En,Fr,De).gb)";
     //file_name = R"(D:\emu\gb\Metroid II - Return of Samus (World).gb)";
     //file_name = R"(D:\emu\gb\Wario Land - Super Mario Land 3 (World).gb)";
+    //file_name = R"(D:\emu\gb\Bomberman GB (USA, Europe) (SGB Enhanced).gb)";
+    //file_name = R"(D:\emu\gb\Donkey Kong Land (USA, Europe) (SGB Enhanced).gb)";
+    //file_name = R"(D:\emu\gb\Donkey Kong (World) (Rev A) (SGB Enhanced).gb)";
+
 
     //file_name = R"(D:\emu\gb\Tests\cpu_instrs\cpu_instrs.gb)";
     //file_name = R"(D:\emu\gb\Tests\cpu_instrs\individual\02-interrupts.gb)";
