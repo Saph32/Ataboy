@@ -106,7 +106,7 @@ void SDLAudioCallback(void* userdata, Uint8* stream, int len)
     size_t nb_samples_needed = len / sizeof(GB::AudioSample);
     size_t nb_samples_have = pos - context->prev_pos;
 
-    if (nb_samples_have < nb_samples_needed * 2)
+    if (nb_samples_have < nb_samples_needed)
     {
         // Fill with silence
         memset(stream, 0, len);
