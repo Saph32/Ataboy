@@ -1688,15 +1688,15 @@ void Video::Tick(System & rSystem)
         if (LCDX == 114) {
             LCDX = 0;
             LY++;
-            if (LCDC.bits.lcden && LY == LYC && STAT.bits.coincidenceint) {
-                rSystem.m_cpu.IF.f.lcdstat = 1;
-            }
             if (LY == 154) {
                 LY = 0;
                 m_mode = 2; // Transition to Mode 2 OAM  
                 if (LCDC.bits.lcden && STAT.bits.mode2int) {
                     rSystem.m_cpu.IF.f.lcdstat = 1;
                 }
+            }
+            if (LCDC.bits.lcden && LY == LYC && STAT.bits.coincidenceint) {
+                rSystem.m_cpu.IF.f.lcdstat = 1;
             }
         } 
         break;
