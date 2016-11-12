@@ -103,6 +103,9 @@ public:
 
     bool m_halt = false;
     bool m_ei_delay = false;
+    bool m_oam_dma_active = false;
+    u16 m_oam_dma_src = 0;
+    u8 m_oam_dma_index = 0;
 
     static const array<OpCodeFn, 256> m_op_codes;
     static const array<OpCodeFn, 256> m_op_codes_CB;
@@ -155,7 +158,7 @@ public:
     void PUSH16(System& rSystem, const u16 v);
     u16 POP16(System& rSystem);
 
-    void DoOAMDMA(System& rSystem, u8 addr);
+    void DoOAMDMA(System& rSystem);
 
     void Execute(System& rSystem);
 };
@@ -221,6 +224,11 @@ public:
 
     template<Access eAccess> u8 VRAMAccess(const u16 addr, const u8 v = 0);
     template<Access eAccess> u8 OAMAccess(const u8 addr, const u8 v = 0);
+
+    void UpdateSTAT() { 
+        STAT.bits.coincidence = (LY == LYC) ? 1 : 0;
+        STAT.bits.mode = m_mode;
+    }
 };
 
 class GamePak
@@ -491,6 +499,7 @@ public:
         m_video.Tick(*this);
         m_io.Tick(*this);
         m_audio.Tick(*this);
+        m_cpu.DoOAMDMA(*this);
         ++m_cycle_count;
     }
 
@@ -579,6 +588,9 @@ void CPU::Reset()
     //bQuit = false;
     m_halt = false;
     m_ei_delay = false;
+    m_oam_dma_active = false;
+    m_oam_dma_src = 0;
+    m_oam_dma_index = 0;
 }
 
 inline u8 CPU::RB(System & rSystem, const u16 addr) {
@@ -1480,9 +1492,10 @@ u8 IO::RegAccess(System& rSystem, const u8 addr, const u8 v)
         break;
     case 0x41 : 
         if (eAccess == Access::Write) {
-            rSystem.m_video.STAT.value= v & 0x78;
+            rSystem.m_video.STAT.value = v & 0x78;
         } else {
-            return 0x80 | rSystem.m_video.STAT.value | rSystem.m_video.m_mode;
+            rSystem.m_video.UpdateSTAT();
+            return rSystem.m_video.STAT.value;
         }
         break;
     STD_REG(0x42, rSystem.m_video.SCY);
@@ -1497,7 +1510,9 @@ u8 IO::RegAccess(System& rSystem, const u8 addr, const u8 v)
     STD_REG(0x45, rSystem.m_video.LYC);
     case 0x46 : 
         if (eAccess == Access::Write) {
-            rSystem.m_cpu.DoOAMDMA(rSystem, v);
+            rSystem.m_cpu.m_oam_dma_active = true;
+            rSystem.m_cpu.m_oam_dma_src = v << 8;
+            rSystem.m_cpu.m_oam_dma_index = 0;
         } 
         break;
     STD_REG(0x47, rSystem.m_video.BGP);
@@ -1512,11 +1527,16 @@ u8 IO::RegAccess(System& rSystem, const u8 addr, const u8 v)
 #pragma warning( pop )
 }
 
-void CPU::DoOAMDMA(System& rSystem, u8 addr) {
-    u16 a = (u16)addr << 8;
-    for (u8 b = 0; b < 160; b++){
-        rSystem.m_video.OAM[b] = RB(rSystem, a);
-        ++a;
+void CPU::DoOAMDMA(System& rSystem) {
+
+    if (m_oam_dma_active) {
+
+        u16 addr = m_oam_dma_src + m_oam_dma_index;
+        rSystem.m_video.OAM[m_oam_dma_index] = rSystem.BusAccess<Access::Read>(addr);
+        ++m_oam_dma_index;
+        if (m_oam_dma_index == 160) {
+            m_oam_dma_active = false;
+        }
     }
 }
 
@@ -1535,29 +1555,26 @@ void CPU::Execute(System& rSystem)
         m_halt = false;
         if (IME) {
             u16 ivector;
-            if (IF.f.vblank & IE.f.vblank) {
-                IF.f.vblank = 0;
-                ivector = 0x40;
-            }
-            else if (IF.f.lcdstat & IE.f.lcdstat) {
-                IF.f.lcdstat = 0;
-                ivector = 0x48;
-            }
-            else if (IF.f.timer & IE.f.timer) {
-                IF.f.timer = 0;
-                ivector = 0x50;
-            }
-            else if (IF.f.serial & IE.f.serial) {
-                IF.f.serial = 0;
-                ivector = 0x58;
-            }
-            else {
+            if (IF.f.joypad & IE.f.joypad){
                 IF.f.joypad = 0;
                 ivector = 0x60;
-            }
+            } else if (IF.f.serial & IE.f.serial) {
+                IF.f.serial = 0;
+                ivector = 0x58;
+            } else if (IF.f.timer & IE.f.timer) {
+                IF.f.timer = 0;
+                ivector = 0x50;
+            } else if (IF.f.lcdstat & IE.f.lcdstat) {
+                IF.f.lcdstat = 0;
+                ivector = 0x48;
+            } else if (IF.f.vblank & IE.f.vblank) {
+                IF.f.vblank = 0;
+                ivector = 0x40;
+            };
             IME = false;
             PUSH16(rSystem, R.PC);
             R.PC = ivector;
+            rSystem.Tick();
         }
     }
 }
@@ -1650,8 +1667,7 @@ void Video::Tick(System & rSystem)
         if (LCDX == 114) {
             LCDX = 0; 
             LY++;
-            STAT.bits.coincidence = (LY == LYC) ? 1 : 0;
-            if (LCDC.bits.lcden && STAT.bits.coincidence && STAT.bits.coincidenceint) {
+            if (LCDC.bits.lcden && LY == LYC && STAT.bits.coincidenceint) {
                 rSystem.m_cpu.IF.f.lcdstat = 1;
             }
             if (LY == 144) {
@@ -1672,8 +1688,7 @@ void Video::Tick(System & rSystem)
         if (LCDX == 114) {
             LCDX = 0;
             LY++;
-            STAT.bits.coincidence = (LY == LYC) ? 1 : 0;
-            if (LCDC.bits.lcden && STAT.bits.coincidence && STAT.bits.coincidenceint) {
+            if (LCDC.bits.lcden && LY == LYC && STAT.bits.coincidenceint) {
                 rSystem.m_cpu.IF.f.lcdstat = 1;
             }
             if (LY == 154) {
