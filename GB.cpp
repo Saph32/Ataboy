@@ -221,9 +221,6 @@ public:
 
     template<Access eAccess> u8 VRAMAccess(const u16 addr, const u8 v = 0);
     template<Access eAccess> u8 OAMAccess(const u8 addr, const u8 v = 0);
-
-    void SetSTAT(const u8 v){STAT.value = v & 0xfc;}
-    u8 GetSTAT(){return STAT.value | m_mode;}
 };
 
 class GamePak
@@ -1471,8 +1468,8 @@ u8 IO::RegAccess(System& rSystem, const u8 addr, const u8 v)
             if (!rSystem.m_video.LCDC.bits.lcden && (v & 0x80)) {
                 // Restart video
                 rSystem.m_video.m_mode = 1;
-                rSystem.m_video.LY = 144;
-                rSystem.m_video.LCDX = 0;
+                rSystem.m_video.LY = 153;
+                rSystem.m_video.LCDX = 113;
             } else if (rSystem.m_video.LCDC.bits.lcden && ((v & 0x80) == 0)) {
                 rSystem.m_video.m_mode = 1;
             }
@@ -1483,9 +1480,9 @@ u8 IO::RegAccess(System& rSystem, const u8 addr, const u8 v)
         break;
     case 0x41 : 
         if (eAccess == Access::Write) {
-            rSystem.m_video.SetSTAT(v);
+            rSystem.m_video.STAT.value= v & 0x78;
         } else {
-            return rSystem.m_video.GetSTAT();
+            return 0x80 | rSystem.m_video.STAT.value | rSystem.m_video.m_mode;
         }
         break;
     STD_REG(0x42, rSystem.m_video.SCY);
@@ -1646,74 +1643,62 @@ void Video::Reset()
 
 void Video::Tick(System & rSystem)
 {
-    if (!LCDC.bits.lcden) {
-        LCDX++;
-        if (LCDX == 114) {
-            LCDX = 0; 
-            RenderLine();
-            LY++;
-            if (LY == 144) {
-                Flip(rSystem);
-            } else if (LY == 154) {
-                LY = 0;
-            }
-        } 
-        return;
-    }
-
+    LCDX++;
     switch(m_mode)
     {
-    case 0 : 
-        LCDX++; 
+    case 0 : // Mode 0 H-Blank
         if (LCDX == 114) {
             LCDX = 0; 
             LY++;
             STAT.bits.coincidence = (LY == LYC) ? 1 : 0;
-            if (STAT.bits.coincidence && STAT.bits.coincidenceint) {
+            if (LCDC.bits.lcden && STAT.bits.coincidence && STAT.bits.coincidenceint) {
                 rSystem.m_cpu.IF.f.lcdstat = 1;
             }
             if (LY == 144) {
                 m_mode = 1; // Transition to Mode 1 VBlank
                 Flip(rSystem);
-                rSystem.m_cpu.IF.f.vblank = 1;
-                if (STAT.bits.mode1int) {
-                    rSystem.m_cpu.IF.f.lcdstat = 1;
+                if (LCDC.bits.lcden) {
+                    rSystem.m_cpu.IF.f.vblank = 1;
+                    if (STAT.bits.mode1int) {
+                        rSystem.m_cpu.IF.f.lcdstat = 1;
+                    }
                 }
             } else { 
                 m_mode = 2;
             }
-        } break;
-    case 1:
-        LCDX++;
+        } 
+        break;
+    case 1: // Mode 1 V-Blank
         if (LCDX == 114) {
-            LCDX = 0; 
+            LCDX = 0;
             LY++;
+            STAT.bits.coincidence = (LY == LYC) ? 1 : 0;
+            if (LCDC.bits.lcden && STAT.bits.coincidence && STAT.bits.coincidenceint) {
+                rSystem.m_cpu.IF.f.lcdstat = 1;
+            }
             if (LY == 154) {
                 LY = 0;
                 m_mode = 2; // Transition to Mode 2 OAM  
-                if (STAT.bits.mode2int) {
+                if (LCDC.bits.lcden && STAT.bits.mode2int) {
                     rSystem.m_cpu.IF.f.lcdstat = 1;
                 }
             }
-            STAT.bits.coincidence = (LY == LYC) ? 1 : 0;
-            if (STAT.bits.coincidence && STAT.bits.coincidenceint) {
-                rSystem.m_cpu.IF.f.lcdstat = 1;
-            }
-        } break;
-    case 2:
-        LCDX++;
-        if (LCDX == 20) {
+        } 
+        break;
+    case 2: // Mode 2 OAM
+        if (LCDX == 23) {
             m_mode = 3;    // Transition to Mode 3 OAM+VRAM
             RenderLine();
-        } break;
-    case 3:
-        LCDX++;
+        } 
+        break;
+    case 3: // Mode 3 OAM+VRAM
         if (LCDX == 63) {
             m_mode = 0;   // Transition to Mode 0 HBlank
-            if (STAT.bits.mode0int) {
+            if (LCDC.bits.lcden && STAT.bits.mode0int) {
                 rSystem.m_cpu.IF.f.lcdstat = 1;
             }
-        } break;
+        } 
+        break;
     }
 }
 

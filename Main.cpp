@@ -193,6 +193,17 @@ int main(int argc, char* argv[])
     //file_name = R"(D:\emu\gb\Bomberman GB (USA, Europe) (SGB Enhanced).gb)";
     //file_name = R"(D:\emu\gb\Donkey Kong Land (USA, Europe) (SGB Enhanced).gb)";
     //file_name = R"(D:\emu\gb\Donkey Kong (World) (Rev A) (SGB Enhanced).gb)";
+    //file_name = R"(D:\emu\gb\Mega Man - Dr. Wily's Revenge (USA).gb)";
+    //file_name = R"(D:\emu\gb\Mega Man II (USA).gb)";
+    //file_name = R"(D:\emu\gb\Mega Man III (USA).gb)";
+    //file_name = R"(D:\emu\gb\Mega Man IV (USA).gb)";
+    //file_name = R"(D:\emu\gb\Mega Man V (USA) (SGB Enhanced).gb)";
+    //file_name = R"(D:\emu\gb\Legend of Zelda, The - Link's Awakening (Canada).gb)";
+    //file_name = R"(D:\emu\gb\Lethal Weapon (USA, Europe).gb)";
+    //file_name = R"(D:\emu\gb\Earthworm Jim (USA).gb)";
+    //file_name = R"(D:\emu\gb\Altered Space - A 3-D Alien Adventure (USA).gb)";
+    //file_name = R"(D:\emu\gb\.gb)";
+
 
 
     //file_name = R"(D:\emu\gb\Tests\cpu_instrs\cpu_instrs.gb)";
