@@ -360,10 +360,12 @@ class SoundChannel
 {
 public:
     bool m_active = false;
+    bool m_dac_active = false;
     int m_lenght = 0;
     bool m_use_lenght = false;
     u8 m_out_val = 0;
     u8 m_cur_wave = 0;
+    u8 m_cur_val = 0;
     u16 m_freq = 0;
     int m_period = 0;
 
@@ -397,7 +399,6 @@ public:
 class SoundWave : public SoundChannel
 {
 public:
-    bool m_enable = false;
     u8 m_phase = 0;
     u8 m_vol_shift = 0;
 
@@ -461,6 +462,9 @@ public:
     Noise m_noise;
 
     bool m_master_enable = false;
+
+    i16 m_left = 0;
+    i16 m_right = 0;
 
     u8 m_left_vol = 0;
     u8 m_right_vol = 0;
@@ -1554,7 +1558,7 @@ void CPU::Execute(System& rSystem)
     } else if (IF.value & IE.value & 0x1f) {
         m_halt = false;
         if (IME) {
-            u16 ivector;
+            u16 ivector = 0x40;
             if (IF.f.joypad & IE.f.joypad){
                 IF.f.joypad = 0;
                 ivector = 0x60;
@@ -1994,6 +1998,9 @@ void Audio::Reset()
     m_sq2.m_active = false;
     m_wave.m_active = false;
     m_noise.m_active = false;
+
+    m_left = 0;
+    m_right = 0;
 }
 
 void Audio::Tick(System &)
@@ -2042,56 +2049,67 @@ void Audio::Tick(System &)
         m_noise.RunNoise();
     }
 
-    ++m_audio_clock;
-    if ((m_audio_clock & 31) == 0) {
-        auto& sample = m_audio_buf[m_audio_pos & AUDIO_BUF_SIZE_MASK];
-        ++m_audio_pos;
-
+    if (m_master_enable) {
         i16 left = 0;
         i16 right = 0;
+        i16 chan1 = (m_sq1.m_active && m_sq1.m_out_val) ? (int)m_sq1.m_env.vol : 0;
+        i16 chan2 = (m_sq2.m_active && m_sq2.m_out_val) ? (int)m_sq2.m_env.vol : 0;
+        i16 chan3 = m_wave.m_active ? (int)m_wave.m_out_val : 0;
+        i16 chan4 = (m_noise.m_active && m_noise.m_out_val) ? (int)m_noise.m_env.vol : 0;
 
-        if (m_master_enable) {
-            i16 chan1 = (m_sq1.m_active && m_sq1.m_out_val) ? (int)m_sq1.m_env.vol * 64 : 0;
-            i16 chan2 = (m_sq2.m_active && m_sq2.m_out_val) ? (int)m_sq2.m_env.vol * 64 : 0;
-            i16 chan3 = m_wave.m_active ? (int)m_wave.m_out_val * 64: 0;
-            i16 chan4 = (m_noise.m_active && m_noise.m_out_val) ? (int)m_noise.m_env.vol * 64 : 0;
+        auto fnApplyDac = [](SoundChannel& rChan, i16 chan_val) -> i16 {
+            if (rChan.m_dac_active) {
+                return chan_val - 8;
+            } else {
+                return 0;
+            }
+        };
 
-            if (chan1 != 0)
-            {
-                chan1 = chan1;
-            }
+        chan1 = fnApplyDac(m_sq1, chan1);
+        chan2 = fnApplyDac(m_sq2, chan2);
+        chan3 = fnApplyDac(m_wave, chan3);
+        chan4 = fnApplyDac(m_noise, chan4);
 
-            if (NR51 & 0x80) {
-                left += chan4;
-            }
-            if (NR51 & 0x40) {
-                left += chan3;
-            }
-            if (NR51 & 0x20) {
-                left += chan2;
-            }
-            if (NR51 & 0x10) {
-                left += chan1;
-            }
-
-
-            if (NR51 & 0x8) {
-                right += chan4;
-            }
-            if (NR51 & 0x4) {
-                right += chan3;
-            }
-            if (NR51 & 0x2) {
-                right += chan2;
-            }
-            if (NR51 & 0x1) {
-                right += chan1;
-            }
-            left = left * (int)m_left_vol;
-            right = right * (int)m_right_vol;
+        if (NR51 & 0x80) {
+            left += chan4;
         }
-        sample.right = left;
-        sample.left = right;
+        if (NR51 & 0x40) {
+            left += chan3;
+        }
+        if (NR51 & 0x20) {
+            left += chan2;
+        }
+        if (NR51 & 0x10) {
+            left += chan1;
+        }
+
+        if (NR51 & 0x8) {
+            right += chan4;
+        }
+        if (NR51 & 0x4) {
+            right += chan3;
+        }
+        if (NR51 & 0x2) {
+            right += chan2;
+        }
+        if (NR51 & 0x1) {
+            right += chan1;
+        }
+        m_left += left * (int)m_left_vol;
+        m_right += right * (int)m_right_vol;
+    }
+
+    ++m_audio_clock;
+    if ((m_audio_clock & 31) == 0) {
+        auto& rSample = m_audio_buf[m_audio_pos & AUDIO_BUF_SIZE_MASK];
+        ++m_audio_pos;
+
+        rSample.right = m_left * 2;
+        rSample.left = m_right * 2;
+
+        m_left = 0;
+        m_right = 0;
+
         // Mix some right to left and left to rightfor confort
         //sample.right = left + right / 4;
         //sample.left = right + left / 4;
@@ -2180,7 +2198,8 @@ u8 Audio::RegAccess<Access::Write>(const u8 addr, const u8 v)
         m_sq1.m_env.init_vol = v >> 4;
         m_sq1.m_env.inc = (v & 0x08) != 0;
         m_sq1.m_env.freq = v & 7;
-        if (!m_sq1.m_env.init_vol && !m_sq1.m_env.inc) {
+        m_sq1.m_dac_active = (v & 0xF8) != 0;
+        if (!m_sq1.m_dac_active) {
             m_sq1.m_active = false;
         }
         break;
@@ -2218,7 +2237,8 @@ u8 Audio::RegAccess<Access::Write>(const u8 addr, const u8 v)
         m_sq2.m_env.init_vol = v >> 4;
         m_sq2.m_env.inc = (v & 0x08) != 0;
         m_sq2.m_env.freq = v & 7;
-        if (!m_sq2.m_env.init_vol && !m_sq2.m_env.inc) {
+        m_sq2.m_dac_active = (v & 0xF8) != 0;
+        if (!m_sq2.m_dac_active) {
             m_sq2.m_active = false;
         }
         break;
@@ -2239,8 +2259,8 @@ u8 Audio::RegAccess<Access::Write>(const u8 addr, const u8 v)
         break;
     case 0x1a:
         NR30 = v;
-        m_wave.m_enable = (v & 0x80) != 0;
-        if (!m_wave.m_enable) {
+        m_wave.m_dac_active = (v & 0x80) != 0;
+        if (!m_wave.m_dac_active) {
             m_wave.m_active = false;
         }
         break;
@@ -2257,6 +2277,7 @@ u8 Audio::RegAccess<Access::Write>(const u8 addr, const u8 v)
         case 2: m_wave.m_vol_shift = 1; break;
         case 3: m_wave.m_vol_shift = 2; break;
         }
+        m_wave.m_out_val = m_wave.m_cur_val >> m_wave.m_vol_shift;
         break;
     case 0x1d:
         NR33 = v; // TODO : coud be removed since write only
@@ -2268,7 +2289,7 @@ u8 Audio::RegAccess<Access::Write>(const u8 addr, const u8 v)
         m_wave.m_use_lenght = (v & 0x40) != 0;
         if (v & 0x80)
         {
-            m_wave.m_active = m_wave.m_enable;
+            m_wave.m_active = m_wave.m_dac_active;
             m_wave.m_period = 2048 - m_wave.m_freq;
             m_wave.m_phase = 0;
         }
@@ -2282,7 +2303,8 @@ u8 Audio::RegAccess<Access::Write>(const u8 addr, const u8 v)
         m_noise.m_env.init_vol = v >> 4;
         m_noise.m_env.inc = (v & 0x08) != 0;
         m_noise.m_env.freq = v & 7;
-        if (!m_noise.m_env.init_vol && !m_noise.m_env.inc) {
+        m_noise.m_dac_active = (v & 0xF8) != 0;
+        if (!m_noise.m_dac_active) {
             m_noise.m_active = false;
         }
         break;
@@ -2333,6 +2355,7 @@ u8 Audio::RegAccess<Access::Write>(const u8 addr, const u8 v)
 void SoundChannel::Reset(Audio & rAudio)
 {
     m_active = false;
+    m_dac_active = false;
     m_freq = 0;
     m_lenght = 0;
     m_use_lenght = true;
@@ -2491,8 +2514,9 @@ void SoundWave::Reset(Audio & rAudio)
     SoundChannel::Reset(rAudio);
 
     m_vol_shift = 0;
-    m_enable = false;
     m_phase = 0;
+    m_cur_wave = 0;
+    m_cur_val = 0;
 
     rAudio.NR30 = 0;
     rAudio.NR31 = 0;
@@ -2511,14 +2535,14 @@ void SoundWave::RunWave(Audio& rAudio)
         m_phase = (m_phase + 1) & 31;
 
         m_cur_wave = rAudio.AUD3WAVERAM[m_phase >> 1];
-        u8 val = m_cur_wave;
+        m_cur_val = m_cur_wave;
         if (m_phase & 1) {
-            val = val & 0x0F;
+            m_cur_val = m_cur_val & 0x0F;
         } else {
-            val = val >> 4;
+            m_cur_val = m_cur_val >> 4;
         }
 
-        m_out_val = val >> m_vol_shift;
+        m_out_val = m_cur_val >> m_vol_shift;
 
         m_period = 2048 - m_freq;
     } else {

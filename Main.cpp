@@ -202,7 +202,7 @@ int main(int argc, char* argv[])
     //file_name = R"(D:\emu\gb\Lethal Weapon (USA, Europe).gb)";
     //file_name = R"(D:\emu\gb\Earthworm Jim (USA).gb)";
     //file_name = R"(D:\emu\gb\Altered Space - A 3-D Alien Adventure (USA).gb)";
-    //file_name = R"(D:\emu\gb\.gb)";
+    //file_name = R"(D:\emu\gb\Gauntlet II (USA, Europe).gb)";
 
 
 
