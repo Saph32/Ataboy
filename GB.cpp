@@ -1581,7 +1581,6 @@ void CPU::Execute(System& rSystem)
             IME = false;
             PUSH16(rSystem, R.PC);
             R.PC = ivector;
-            rSystem.Tick();
         }
     }
 }
