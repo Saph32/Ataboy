@@ -469,6 +469,9 @@ public:
     u8 m_left_vol = 0;
     u8 m_right_vol = 0;
 
+    i32 m_left_cap = 0;
+    i32 m_right_cap = 0;
+
     void Reset();
     void Tick(System&);
 
@@ -2104,15 +2107,17 @@ void Audio::Tick(System &)
         auto& rSample = m_audio_buf[m_audio_pos & AUDIO_BUF_SIZE_MASK];
         ++m_audio_pos;
 
-        rSample.right = m_left * 2;
-        rSample.left = m_right * 2;
+        m_left *= 2;
+        m_right *= 2;
+
+        rSample.left  = m_left - (i16)(m_left_cap / 32768);
+        rSample.right = m_right - (i16)(m_right_cap / 32768);
+
+        m_left_cap = m_left * 176 + m_left_cap * 32592 / 32768;
+        m_right_cap = m_right * 176 + m_right_cap * 32592 / 32768;
 
         m_left = 0;
         m_right = 0;
-
-        // Mix some right to left and left to rightfor confort
-        //sample.right = left + right / 4;
-        //sample.left = right + left / 4;
     }
 }
 
