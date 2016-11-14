@@ -317,6 +317,8 @@ public:
 
     u8 m_timer_mask = 255;
 
+    bool m_serial_active = false;
+    bool m_serial_clock = false;
     u8 m_serial_bits = 0;
 
     Keys m_keys = {};
@@ -1452,12 +1454,13 @@ u8 IO::RegAccess(System& rSystem, const u8 addr, const u8 v)
     STD_REG(0x01, SB);
     case 0x02 :
         if (eAccess == Access::Write) {
-            SB = v;
-            if ((v & 0x80) && (v & 1)) {
+            m_serial_clock = (v & 1) != 0;
+            m_serial_active = (v & 0x80) != 0;
+            if (m_serial_active) {
                 m_serial_bits = 8;
             }
         } else {
-            return 0xfe | SC;
+            return (m_serial_clock ? 1 : 0) | (m_serial_active ? 0x80 : 0) ;
         }
         break;
     case 0x04 :
@@ -1594,27 +1597,33 @@ void IO::Reset()
     m_timer_mask = 255;
     P1 = 0x0f;
     m_keys.value = 0xff;
+    m_serial_active = false;
+    m_serial_bits = 0;
+    m_serial_clock = false;
 }
 
-void IO::Tick(System& m_rSystem)
+void IO::Tick(System& rSystem)
 {
     Divider.value += 4;
 
     if (TAC & 4) {
-        if (((u8)m_rSystem.m_cycle_count & m_timer_mask) == 0)
+        if (((u8)rSystem.m_cycle_count & m_timer_mask) == 0)
         if (TIMA == 255) {
             TIMA = TMA;
-            m_rSystem.m_cpu.IF.f.timer = 1;
+            rSystem.m_cpu.IF.f.timer = 1;
         } else {
             ++TIMA;
         }
     }
 
-    if (m_serial_bits) {
-        --m_serial_bits;
-        SB = SB << 1 | 1;
-        if (!m_serial_bits) {
-            m_rSystem.m_cpu.IF.f.serial = 1;
+    if ((rSystem.m_cycle_count & 127) == 0) {
+        if (m_serial_active && m_serial_clock && m_serial_bits) {
+            --m_serial_bits;
+            SB = (SB << 1) | 1;
+            if (!m_serial_bits) {
+                m_serial_active = false;
+                rSystem.m_cpu.IF.f.serial = 1;
+            }
         }
     }
 }
