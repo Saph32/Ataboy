@@ -1,3 +1,7 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
+
 // Copyright (c) 2016, Jean Charles Vallieres
 // All rights reserved.
 //
@@ -139,7 +143,7 @@ int main(int argc, char* argv[])
     (void)argv;
 
     bool bUseSDL = true;
-    bool bUseVSync = false;
+    bool bUseVSync = true;
     int speed_factor = 1;
 
     const char* file_name = nullptr;
@@ -147,8 +151,6 @@ int main(int argc, char* argv[])
     {
         file_name = argv[1];
     }
-    //file_name = R"(D:\emu\gb\Mortal Kombat II (USA, Europe).gb)";
-    //file_name = R"(D:\emu\gb\Battle Arena Toshinden (USA) (SGB Enhanced).gb)";
     //file_name = R"(D:\emu\gb\PD\Dan Laser Demo (PD).gb)";
     //file_name = R"(D:\emu\gb\PD\MegAnime by Megaman_X (PD).gb)";
     //file_name = R"(D:\emu\gb\PD\Apocalypse Now Demo (PD).gb)";
@@ -160,19 +162,42 @@ int main(int argc, char* argv[])
     //file_name = R"(D:\emu\gb\PD\jmla09.gb)";
     //file_name = R"(D:\emu\gb\PD\oh.gb)";
     //file_name = R"(D:\emu\gb\PD\Dawn.gb)";
-    //file_name = R"(D:\emu\gb\Chikyuu Kaihou Gun ZAS (Japan).gb)";
-    //file_name = R"(D:\emu\gb\Wario Blast featuring Bomberman! (USA, Europe) (SGB Enhanced).gb)";
-    //file_name = R"(D:\emu\gb\Kirby's Dream Land (USA, Europe).gb)";
+
+
     //file_name = R"(D:\emu\gb\Asteroids (USA, Europe).gb)";
-    //file_name = R"(D:\emu\gb\Mortal Kombat 3 (USA).gb)";
+    //file_name = R"(D:\emu\gb\Alleyway (World).gb)";
     //file_name = R"(D:\emu\gb\Amazing Penguin (USA, Europe).gb)";
+    //file_name = R"(D:\emu\gb\Altered Space - A 3-D Alien Adventure (USA).gb)";
+    //file_name = R"(D:\emu\gb\Battle Arena Toshinden (USA) (SGB Enhanced).gb)";
+    //file_name = R"(D:\emu\gb\Bomberman GB (USA, Europe) (SGB Enhanced).gb)";
+    //file_name = R"(D:\emu\gb\Chikyuu Kaihou Gun ZAS (Japan).gb)";
+    //file_name = R"(D:\emu\gb\Castlevania - The Adventure (USA).gb)";
+    //file_name = R"(D:\emu\gb\Castlevania II - Belmont's Revenge (USA, Europe).gb)";
+    //file_name = R"(D:\emu\gb\Castlevania Legends (USA, Europe) (SGB Enhanced).gb)";
+    //file_name = R"(D:\emu\gb\Donkey Kong (World) (Rev A) (SGB Enhanced).gb)";
+    //file_name = R"(D:\emu\gb\Donkey Kong Land (USA, Europe) (SGB Enhanced).gb)";
+    //file_name = R"(D:\emu\gb\Earthworm Jim (USA).gb)";
+    //file_name = R"(D:\emu\gb\Kirby's Dream Land (USA, Europe).gb)";
     //file_name = R"(D:\emu\gb\Foreman for Real (USA, Europe).gb)";
+    //file_name = R"(D:\emu\gb\Gauntlet II (USA, Europe).gb)";
     //file_name = R"(D:\emu\gb\Gremlins 2 - The New Batch (World).gb)";
     //file_name = R"(D:\emu\gb\Ken Griffey Jr. Presents Major League Baseball (USA, Europe) (SGB Enhanced).gb)";
     //file_name = R"(D:\emu\gb\Killer Instinct (USA, Europe) (SGB Enhanced).gb)";
     //file_name = R"(D:\emu\gb\Krusty's Fun House (USA, Europe).gb)";
     //file_name = R"(D:\emu\gb\Lion King, The (USA).gb)";
+    //file_name = R"(D:\emu\gb\Lethal Weapon (USA, Europe).gb)";
+    //file_name = R"(D:\emu\gb\Legend of Zelda, The - Link's Awakening (Canada).gb)";
     //file_name = R"(D:\emu\gb\Mario's Picross (USA, Europe) (SGB Enhanced).gb)";
+    //file_name = R"(D:\emu\gb\Metroid II - Return of Samus (World).gb)";
+    //file_name = R"(D:\emu\gb\Mega Man - Dr. Wily's Revenge (USA).gb)";
+    //file_name = R"(D:\emu\gb\Mega Man II (USA).gb)";
+    //file_name = R"(D:\emu\gb\Mega Man III (USA).gb)";
+    //file_name = R"(D:\emu\gb\Mega Man IV (USA).gb)";
+    //file_name = R"(D:\emu\gb\Mega Man V (USA) (SGB Enhanced).gb)";
+    //file_name = R"(D:\emu\gb\Mortal Kombat II (USA, Europe).gb)";
+    //file_name = R"(D:\emu\gb\Mortal Kombat 3 (USA).gb)";
+    //file_name = R"(D:\emu\gb\Mortal Kombat 4 (USA, Europe) (SGB Enhanced).gbc)";
+    //file_name = R"(D:\emu\gb\Monster Rancher Battle Card GB (USA) (SGB Enhanced).gbc)";
     //file_name = R"(D:\emu\gb\Mighty Morphin Power Rangers (USA, Europe) (SGB Enhanced).gb)";
     //file_name = R"(D:\emu\gb\Nemesis (USA).gb)";
     //file_name = R"(D:\emu\gb\Panel Action Bingo (USA).gb)";
@@ -182,27 +207,14 @@ int main(int argc, char* argv[])
     //file_name = R"(D:\emu\gb\Super Mario Land (World) (Rev A).gb)";
     //file_name = R"(D:\emu\gb\Super Mario Land 2 - 6 Golden Coins (USA, Europe) (Rev B).gb)";
     //file_name = R"(D:\emu\gb\Super R.C. Pro-Am (USA, Europe).gb)";
-    //file_name = R"(D:\emu\gb\Mortal Kombat 4 (USA, Europe) (SGB Enhanced).gbc)";
-    //file_name = R"(D:\emu\gb\Castlevania - The Adventure (USA).gb)";
-    //file_name = R"(D:\emu\gb\Castlevania II - Belmont's Revenge (USA, Europe).gb)";
     //file_name = R"(D:\emu\gb\Trip World (Europe).gb)";
-    //file_name = R"(D:\emu\gb\Alleyway (World).gb)";
     //file_name = R"(D:\emu\gb\V-Rally - Championship Edition (Europe) (En,Fr,De).gb)";
-    //file_name = R"(D:\emu\gb\Metroid II - Return of Samus (World).gb)";
+    //file_name = R"(D:\emu\gb\Wario Blast featuring Bomberman! (USA, Europe) (SGB Enhanced).gb)";
     //file_name = R"(D:\emu\gb\Wario Land - Super Mario Land 3 (World).gb)";
-    //file_name = R"(D:\emu\gb\Bomberman GB (USA, Europe) (SGB Enhanced).gb)";
-    //file_name = R"(D:\emu\gb\Donkey Kong Land (USA, Europe) (SGB Enhanced).gb)";
-    //file_name = R"(D:\emu\gb\Donkey Kong (World) (Rev A) (SGB Enhanced).gb)";
-    //file_name = R"(D:\emu\gb\Mega Man - Dr. Wily's Revenge (USA).gb)";
-    //file_name = R"(D:\emu\gb\Mega Man II (USA).gb)";
-    //file_name = R"(D:\emu\gb\Mega Man III (USA).gb)";
-    //file_name = R"(D:\emu\gb\Mega Man IV (USA).gb)";
-    //file_name = R"(D:\emu\gb\Mega Man V (USA) (SGB Enhanced).gb)";
-    //file_name = R"(D:\emu\gb\Legend of Zelda, The - Link's Awakening (Canada).gb)";
-    //file_name = R"(D:\emu\gb\Lethal Weapon (USA, Europe).gb)";
-    //file_name = R"(D:\emu\gb\Earthworm Jim (USA).gb)";
-    //file_name = R"(D:\emu\gb\Altered Space - A 3-D Alien Adventure (USA).gb)";
-    //file_name = R"(D:\emu\gb\Gauntlet II (USA, Europe).gb)";
+    //file_name = R"(D:\emu\gb\Game & Watch Gallery 3 (USA, Europe) (SGB Enhanced).gbc)";
+    //file_name = R"(D:\emu\gb\NBA 3 on 3 featuring Kobe Bryant (USA) (SGB Enhanced).gbc)";
+    //file_name = R"(D:\emu\gb\Godzilla - The Series (USA) (En,Fr,De).gbc)";
+
 
 
 
