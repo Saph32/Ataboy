@@ -5,13 +5,26 @@ How to compile :
 
 Windows:
 
-	- Get Visual Studio 2015
+	- Visual Studio 2015 Update 3 is required.
+	- You need to install SDL2 :
+		- Get vcpkg from https://github.com/Microsoft/vcpkg
+		- Follow the instructions for bootstrap
+		- .\vcpkg integrate install
+		- .\vcpkg install sdl2:x64-windows
+	
 	- Open Ataboy.sln
 	- Build
 	
 Linux:
 
-	- coming soon...
+	- C++11 compatible compiler required
+	- Install SDL2 with your package manager
+	- Install CMake with your package manager
+	- Open a terminal on the source directory
+	- mkdir build
+	- cd build
+	- cmake ..
+	- make
 	
 How to use :
 
