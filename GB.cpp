@@ -1,3 +1,7 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
+
 // Copyright (c) 2016, Jean Charles Vallieres
 // All rights reserved.
 //
@@ -133,8 +137,9 @@ public:
     template<Operand8 src, u8 bit> void RES(System& rSystem);
     template<Operand8 src, u8 bit> void BIT(System& rSystem);
     template<Operand8 src, Operand8 dst> void LD(System& rSystem);
-    template<Operand16 src, Operand16 dst> void LD16(System& rSystem);
+    template<Operand16 dst> void LD16(System& rSystem);
     void LDSP(System& rSystem);
+    void LDSPHL(System& rSystem);
     template<Operand16 dst> void LDSPOF(System& rSystem);
     void HALT(System& rSystem);
     void STOP(System& rSystem);
@@ -756,6 +761,7 @@ void CPU::INC16(System& rSystem) {
     t = t + 1;
     SetOperand16<src>(t);
     R.PC++;
+    rSystem.Tick();
 }
 
 template<CPU::Operand16 src>
@@ -764,6 +770,7 @@ void CPU::DEC16(System& rSystem) {
     t = t - 1;
     SetOperand16<src>(t);
     R.PC++; 
+    rSystem.Tick();
 }
 
 template<CPU::Operand8 src>
@@ -908,9 +915,9 @@ void CPU::LD(System& rSystem) {
 #pragma warning( pop )
 }
 
-template<CPU::Operand16 src, CPU::Operand16 dst>
+template<CPU::Operand16 dst>
 void CPU::LD16(System& rSystem) {
-    SetOperand16<dst>(GetOperand16<src>(rSystem));
+    SetOperand16<dst>(GetOperand16<OpImm16>(rSystem));
     R.PC++; 
 }
 
@@ -919,6 +926,12 @@ void CPU::LDSP(System& rSystem) {
     WB(rSystem, t, R.SP & 0xff);
     t++;
     WB(rSystem, t, (R.SP >> 8) & 0xff);
+    R.PC++; 
+}
+
+void CPU::LDSPHL(System& rSystem) {
+    R.SP = R.HL;
+    rSystem.Tick();
     R.PC++; 
 }
 
@@ -1000,9 +1013,9 @@ void CPU::RET(System& rSystem) {
 #pragma warning( push )
 #pragma warning( disable : 4127 )   // warning C4127: conditional expression is constant
 
+    rSystem.Tick();
     if (Condition<con>()) {
         R.PC = POP16(rSystem);
-        rSystem.Tick();
     }
     else {
         R.PC++;
@@ -1137,14 +1150,14 @@ u16 CPU::POP16(System& rSystem) {
 
 #define STD_OPERANDS(x,y) x<OpB, y>, x<OpC, y>, x<OpD, y>, x<OpE, y>, x<OpH, y>, x<OpL, y>, x<OpIHL, y>, x<OpA, y>
 const array<CPU::OpCodeFn, 256> CPU::m_op_codes = {
-    &CPU::NOP,        &CPU::LD16<OpImm16, OpBC>,    &CPU::LD<OpA, OpIBC>, &CPU::INC16<OpBC>, &CPU::INC<OpB>,      &CPU::DEC<OpB>,   &CPU::LD<OpImm, OpB>,     &CPU::BITS<OpA, RLCA>,
-    &CPU::LDSP,       &CPU::ADDHL<OpBC>,            &CPU::LD<OpIBC, OpA>, &CPU::DEC16<OpBC>, &CPU::INC<OpC>,      &CPU::DEC<OpC>,   &CPU::LD<OpImm, OpC>,     &CPU::BITS<OpA, RRCA>,
-    &CPU::STOP,       &CPU::LD16<OpImm16, OpDE>,    &CPU::LD<OpA, OpIDE>, &CPU::INC16<OpDE>, &CPU::INC<OpD>,      &CPU::DEC<OpD>,   &CPU::LD<OpImm, OpD>,     &CPU::BITS<OpA, RLA>,
-    &CPU::JR<Always>, &CPU::ADDHL<OpDE>,            &CPU::LD<OpIDE, OpA>, &CPU::DEC16<OpDE>, &CPU::INC<OpE>,      &CPU::DEC<OpE>,   &CPU::LD<OpImm, OpE>,     &CPU::BITS<OpA, RRA>,
-    &CPU::JR<CondNZ>, &CPU::LD16<OpImm16, OpHL>,    &CPU::LD<OpA, OpHLI>, &CPU::INC16<OpHL>, &CPU::INC<OpH>,      &CPU::DEC<OpH>,   &CPU::LD<OpImm, OpH>,     &CPU::DAA,
-    &CPU::JR<CondZ>,  &CPU::ADDHL<OpHL>,            &CPU::LD<OpHLI, OpA>, &CPU::DEC16<OpHL>, &CPU::INC<OpL>,      &CPU::DEC<OpL>,   &CPU::LD<OpImm, OpL>,     &CPU::CPL,
-    &CPU::JR<CondNC>, &CPU::LD16<OpImm16, OpSP>,    &CPU::LD<OpA, OpHLD>, &CPU::INC16<OpSP>, &CPU::INC<OpIHL>,    &CPU::DEC<OpIHL>, &CPU::LD<OpImm, OpIHL>,   &CPU::SCF,
-    &CPU::JR<CondC>,  &CPU::ADDHL<OpSP>,            &CPU::LD<OpHLD, OpA>, &CPU::DEC16<OpSP>, &CPU::INC<OpA>,      &CPU::DEC<OpA>,   &CPU::LD<OpImm, OpA>,     &CPU::CCF,
+    &CPU::NOP,              &CPU::LD16<OpBC>,  &CPU::LD<OpA, OpIBC>,  &CPU::INC16<OpBC>, &CPU::INC<OpB>,      &CPU::DEC<OpB>,    &CPU::LD<OpImm, OpB>,     &CPU::BITS<OpA, RLCA>,
+    &CPU::LDSP,             &CPU::ADDHL<OpBC>, &CPU::LD<OpIBC, OpA>,  &CPU::DEC16<OpBC>, &CPU::INC<OpC>,      &CPU::DEC<OpC>,    &CPU::LD<OpImm, OpC>,     &CPU::BITS<OpA, RRCA>,
+    &CPU::STOP,             &CPU::LD16<OpDE>,  &CPU::LD<OpA, OpIDE>,  &CPU::INC16<OpDE>, &CPU::INC<OpD>,      &CPU::DEC<OpD>,    &CPU::LD<OpImm, OpD>,     &CPU::BITS<OpA, RLA>,
+    &CPU::JR<Always>,       &CPU::ADDHL<OpDE>, &CPU::LD<OpIDE, OpA>,  &CPU::DEC16<OpDE>, &CPU::INC<OpE>,      &CPU::DEC<OpE>,    &CPU::LD<OpImm, OpE>,     &CPU::BITS<OpA, RRA>,
+    &CPU::JR<CondNZ>,       &CPU::LD16<OpHL>,  &CPU::LD<OpA, OpHLI>,  &CPU::INC16<OpHL>, &CPU::INC<OpH>,      &CPU::DEC<OpH>,    &CPU::LD<OpImm, OpH>,     &CPU::DAA,
+    &CPU::JR<CondZ>,        &CPU::ADDHL<OpHL>, &CPU::LD<OpHLI, OpA>,  &CPU::DEC16<OpHL>, &CPU::INC<OpL>,      &CPU::DEC<OpL>,    &CPU::LD<OpImm, OpL>,     &CPU::CPL,
+    &CPU::JR<CondNC>,       &CPU::LD16<OpSP>,  &CPU::LD<OpA, OpHLD>,  &CPU::INC16<OpSP>, &CPU::INC<OpIHL>,    &CPU::DEC<OpIHL>,  &CPU::LD<OpImm, OpIHL>,   &CPU::SCF,
+    &CPU::JR<CondC>,        &CPU::ADDHL<OpSP>, &CPU::LD<OpHLD, OpA>,  &CPU::DEC16<OpSP>, &CPU::INC<OpA>,      &CPU::DEC<OpA>,    &CPU::LD<OpImm, OpA>,     &CPU::CCF,
     STD_OPERANDS(&CPU::LD, OpB),
     STD_OPERANDS(&CPU::LD, OpC),
     STD_OPERANDS(&CPU::LD, OpD),
@@ -1161,14 +1174,14 @@ const array<CPU::OpCodeFn, 256> CPU::m_op_codes = {
     STD_OPERANDS(&CPU::BITW, XOR),
     STD_OPERANDS(&CPU::BITW, OR),
     STD_OPERANDS(&CPU::ALU, CP),
-    &CPU::RET<CondNZ>,        &CPU::POP<OpBC>,          &CPU::JP<CondNZ>,         &CPU::JP<Always>, &CPU::CALL<CondNZ>,  &CPU::PUSH<OpBC>,     &CPU::ALU<OpImm, ADD>,    &CPU::RST<0x00>,
-    &CPU::RET<CondZ>,         &CPU::RET<Always>,        &CPU::JP<CondZ>,          &CPU::CB,         &CPU::CALL<CondZ>,   &CPU::CALL<Always>,   &CPU::ALU<OpImm, ADC>,    &CPU::RST<0x08>,
-    &CPU::RET<CondNC>,        &CPU::POP<OpDE>,          &CPU::JP<CondNC>,         &CPU::NOP,        &CPU::CALL<CondNC>,  &CPU::PUSH<OpDE>,     &CPU::ALU<OpImm, SUB>,    &CPU::RST<0x10>,
-    &CPU::RET<CondC>,         &CPU::RET<RETI>,          &CPU::JP<CondC>,          &CPU::NOP,        &CPU::CALL<CondC>,   &CPU::NOP,            &CPU::ALU<OpImm, SBC>,    &CPU::RST<0x18>,
-    &CPU::LD<OpA, OpIoImm>,   &CPU::POP<OpHL>,          &CPU::LD<OpA, OpIoC>,     &CPU::NOP,        &CPU::NOP,           &CPU::PUSH<OpHL>,     &CPU::BITW<OpImm, AND>,   &CPU::RST<0x20>,
-    &CPU::LDSPOF<OpSP>,       &CPU::JPHL,               &CPU::LD<OpA, OpIImm>,    &CPU::NOP,        &CPU::NOP,           &CPU::NOP,            &CPU::BITW<OpImm, XOR>,   &CPU::RST<0x28>,
-    &CPU::LD<OpIoImm, OpA>,   &CPU::POP<OpAF>,          &CPU::LD<OpIoC, OpA>,     &CPU::DI,         &CPU::NOP,           &CPU::PUSH<OpAF>,     &CPU::BITW<OpImm, OR>,    &CPU::RST<0x30>,
-    &CPU::LDSPOF<OpHL>,       &CPU::LD16<OpHL, OpSP>,   &CPU::LD<OpIImm, OpA>,    &CPU::EI,         &CPU::NOP,           &CPU::NOP,            &CPU::ALU<OpImm, CP>,     &CPU::RST<0x38>,
+    &CPU::RET<CondNZ>,      &CPU::POP<OpBC>,   &CPU::JP<CondNZ>,      &CPU::JP<Always>, &CPU::CALL<CondNZ>,  &CPU::PUSH<OpBC>,   &CPU::ALU<OpImm, ADD>,    &CPU::RST<0x00>,
+    &CPU::RET<CondZ>,       &CPU::RET<Always>, &CPU::JP<CondZ>,       &CPU::CB,         &CPU::CALL<CondZ>,   &CPU::CALL<Always>, &CPU::ALU<OpImm, ADC>,    &CPU::RST<0x08>,
+    &CPU::RET<CondNC>,      &CPU::POP<OpDE>,   &CPU::JP<CondNC>,      &CPU::NOP,        &CPU::CALL<CondNC>,  &CPU::PUSH<OpDE>,   &CPU::ALU<OpImm, SUB>,    &CPU::RST<0x10>,
+    &CPU::RET<CondC>,       &CPU::RET<RETI>,   &CPU::JP<CondC>,       &CPU::NOP,        &CPU::CALL<CondC>,   &CPU::NOP,          &CPU::ALU<OpImm, SBC>,    &CPU::RST<0x18>,
+    &CPU::LD<OpA, OpIoImm>, &CPU::POP<OpHL>,   &CPU::LD<OpA, OpIoC>,  &CPU::NOP,        &CPU::NOP,           &CPU::PUSH<OpHL>,   &CPU::BITW<OpImm, AND>,   &CPU::RST<0x20>,
+    &CPU::LDSPOF<OpSP>,     &CPU::JPHL,        &CPU::LD<OpA, OpIImm>, &CPU::NOP,        &CPU::NOP,           &CPU::NOP,          &CPU::BITW<OpImm, XOR>,   &CPU::RST<0x28>,
+    &CPU::LD<OpIoImm, OpA>, &CPU::POP<OpAF>,   &CPU::LD<OpIoC, OpA>,  &CPU::DI,         &CPU::NOP,           &CPU::PUSH<OpAF>,   &CPU::BITW<OpImm, OR>,    &CPU::RST<0x30>,
+    &CPU::LDSPOF<OpHL>,     &CPU::LDSPHL,      &CPU::LD<OpIImm, OpA>, &CPU::EI,         &CPU::NOP,           &CPU::NOP,          &CPU::ALU<OpImm, CP>,     &CPU::RST<0x38>,
 };
 
 const array<CPU::OpCodeFn, 256> CPU::m_op_codes_CB = {
@@ -2415,7 +2428,9 @@ void SoundChannel::RunEnv(SoundEnv & rEnv)
             } else {
                 if (rEnv.vol > 0) {
                     --rEnv.vol;
-                } if (rEnv.vol > 0) {
+                }
+                
+                if (rEnv.vol > 0) {
                     rEnv.period = rEnv.freq;
                 } else {
                     rEnv.period = 0;
