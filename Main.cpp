@@ -38,7 +38,7 @@
 #include <mutex>
 
 
-#include <SDL.h>
+#include <SDL2/SDL.h>
 
 using namespace std;
 using namespace std::chrono;
