@@ -45,21 +45,28 @@ using namespace std::chrono;
 
 GB::Keys g_keys = {};
 
+constexpr int JOYSTICK_DEAD_ZONE = 12000;
+
 enum class Action
 {
     None,
     Quit,
     KeyUpdate,
+    JoyUpdate,
 };
 
 Action PollEvents()
 {
+    Action eAction = Action::None;
+
     SDL_Event event;
     SDL_PollEvent(&event);
 
-    switch(event.type)
-    {
-    case SDL_QUIT: return Action::Quit;
+    auto prev_keys = g_keys;
+    switch(event.type) {
+    case SDL_QUIT: 
+        eAction = Action::Quit;
+        break;
     case SDL_KEYDOWN:
         switch(event.key.keysym.sym){
         case SDLK_LEFT:   g_keys.k.left = 0;  break;
@@ -70,7 +77,9 @@ Action PollEvents()
         case SDLK_x:      g_keys.k.a = 0;     break;
         case SDLK_c:      g_keys.k.select = 0;break;
         case SDLK_v:      g_keys.k.start = 0; break;
-        }; return Action::KeyUpdate;
+        }; 
+        eAction = Action::KeyUpdate;
+        break;
     case SDL_KEYUP :
         switch(event.key.keysym.sym){
         case SDLK_LEFT:   g_keys.k.left = 1;  break;
@@ -81,11 +90,24 @@ Action PollEvents()
         case SDLK_x:      g_keys.k.a = 1;     break;
         case SDLK_c:      g_keys.k.select = 1;break;
         case SDLK_v:      g_keys.k.start = 1; break;
-        // case SDLK_q: if(iGame > 0) {iGame--; bRestart = true; CPU::bQuit = true;} break;
-        //case SDLK_w: if(iGame < iGameMax) {iGame++; bRestart = true; CPU::bQuit = true;} break;
-        } return Action::KeyUpdate;
+        }
+        eAction = Action::KeyUpdate;
+        break;
+    case SDL_CONTROLLERBUTTONUP:
+    case SDL_CONTROLLERBUTTONDOWN:
+    case SDL_CONTROLLERAXISMOTION:
+        eAction = Action::JoyUpdate;
+        break;
     }
-    return Action::None;
+
+    if (eAction == Action::KeyUpdate)
+    {
+        if (prev_keys.value == g_keys.value) {
+            eAction = Action::None;
+        }
+    }
+
+    return eAction;
 }
 
 struct AudioContext
@@ -279,6 +301,7 @@ int main(int argc, char* argv[])
     SDL_Renderer* pRenderer = nullptr;
     SDL_Texture* pTexture = nullptr;
     SDL_AudioDeviceID audio_dev = 0;
+    SDL_GameController* controller = nullptr;
 
     if (bUseSDL)
     {
@@ -339,6 +362,18 @@ int main(int argc, char* argv[])
             printf("Can't initialize SDL audio\n");
             return 1;
         }
+
+        for (int i = 0; i < SDL_NumJoysticks(); ++i) {
+            if (SDL_IsGameController(i)) {
+                controller = SDL_GameControllerOpen(i);
+                if (controller) {
+                    break;
+                } else {
+                    printf("Could not open gamecontroller %i: %s\n", i, SDL_GetError());
+                }
+            }
+        }
+
     }
 
     auto start_time = high_resolution_clock::now();
@@ -351,6 +386,7 @@ int main(int argc, char* argv[])
 
     GB::u32 last_rendered_frame = 0;
     auto run_time = high_resolution_clock::now();
+    auto pause_time = nanoseconds(0);
 
     bool bQuit = false;
     while(!bQuit)
@@ -362,6 +398,39 @@ int main(int argc, char* argv[])
             do
             {
                 eAction = PollEvents();
+
+                if (eAction == Action::JoyUpdate && controller)
+                {
+                    auto prev_keys = g_keys;
+#define CHECK_BUTTON(x, y) if (SDL_GameControllerGetButton(controller, x)) { y = 0; } else { y = 1;}
+                    CHECK_BUTTON(SDL_CONTROLLER_BUTTON_DPAD_LEFT, g_keys.k.left);
+                    CHECK_BUTTON(SDL_CONTROLLER_BUTTON_DPAD_RIGHT, g_keys.k.right);
+                    CHECK_BUTTON(SDL_CONTROLLER_BUTTON_DPAD_UP, g_keys.k.up);
+                    CHECK_BUTTON(SDL_CONTROLLER_BUTTON_DPAD_DOWN, g_keys.k.down);
+                    CHECK_BUTTON(SDL_CONTROLLER_BUTTON_A, g_keys.k.a);
+                    CHECK_BUTTON(SDL_CONTROLLER_BUTTON_X, g_keys.k.b);
+                    CHECK_BUTTON(SDL_CONTROLLER_BUTTON_START, g_keys.k.start);
+                    CHECK_BUTTON(SDL_CONTROLLER_BUTTON_BACK, g_keys.k.select);
+
+                    auto x_axis = SDL_GameControllerGetAxis(controller, SDL_CONTROLLER_AXIS_LEFTX);
+                    if (x_axis < -JOYSTICK_DEAD_ZONE) {
+                        g_keys.k.left = 0;
+                    } else if (x_axis > JOYSTICK_DEAD_ZONE) {
+                        g_keys.k.right = 0;
+                    }
+
+                    auto y_axis = SDL_GameControllerGetAxis(controller, SDL_CONTROLLER_AXIS_LEFTY);
+                    if (y_axis < -JOYSTICK_DEAD_ZONE) {
+                        g_keys.k.up = 0;
+                    } else if (x_axis > JOYSTICK_DEAD_ZONE) {
+                        g_keys.k.down = 0;
+                    }
+
+                    if (prev_keys.value != g_keys.value)
+                    {
+                        eAction = Action::KeyUpdate;
+                    }
+                }
 
                 if (eAction == Action::Quit)
                 {
@@ -411,7 +480,14 @@ int main(int argc, char* argv[])
 
         auto time_now = high_resolution_clock::now();
 
-        auto elapsed = time_now - run_time;
+        auto elapsed = time_now - run_time - pause_time;
+
+        constexpr auto MAX_SKIP_TIME = milliseconds(50);
+        if (elapsed > MAX_SKIP_TIME)
+        {
+            pause_time += elapsed - MAX_SKIP_TIME;
+            elapsed = MAX_SKIP_TIME;
+        }
 
         auto emu_elapsed = gb.RunTime(duration_cast<nanoseconds>(elapsed) * speed_factor);
 
@@ -421,7 +497,7 @@ int main(int argc, char* argv[])
         {
             duration<float> fsec = time_now - start_time;
             float fps = 1.0f * nb_frames / fsec.count();
-            printf("FPS:%.2f (%.0f%%)\r", fps, fps / 60 * 100);
+            printf("FPS:%.2f (%.0f%%) %d %d %d %d\r", fps, fps / 60 * 100, g_keys.k.left, g_keys.k.right, g_keys.k.up, g_keys.k.down);
             nb_frames = 0;
             start_time = time_now;
         }
