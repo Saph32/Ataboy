@@ -10,13 +10,15 @@ matrix:
         apt:
           packages:
             - g++-6
+			- libsdl2-dev
       env: COMPILER=g++-6
     - compiler: clang
       addons:
         apt:
           packages:
-            - clang-3.9
-      env: COMPILER=clang++-3.9
+            - clang-3.8
+			- libsdl2-dev
+      env: COMPILER=clang++-3.8
 #before_script:
 #  - sudo apt-get -qq update
 #  - sudo apt-get install -y libsdl2-dev
