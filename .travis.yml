@@ -8,18 +8,25 @@ matrix:
     - compiler: gcc
       addons:
         apt:
+          sources:
+            - ubuntu-toolchain-r/test
           packages:
             - g++-6
+            - libsdl2-dev
       env: COMPILER=g++-6
     - compiler: clang
       addons:
         apt:
+          sources:
+            - ubuntu-toolchain-r/test
+            - llvm-toolchain-precise-3.8
           packages:
             - clang-3.8
+            - libsdl2-dev
       env: COMPILER=clang++-3.8
-before_script:
-  - sudo apt-get -qq update
-  - sudo apt-get install -y libsdl2-dev
+#before_script:
+#  - sudo apt-get -qq update
+#  - sudo apt-get install -y libsdl2-dev
 script:
   - mkdir build
   - cd build
