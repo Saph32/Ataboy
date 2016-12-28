@@ -8,25 +8,20 @@ matrix:
     - compiler: gcc
       addons:
         apt:
-          sources:
-            - extras-precise
           packages:
             - g++-6
-            - libsdl2-dev
       env: COMPILER=g++-6
     - compiler: clang
       addons:
         apt:
-          sources:
-            - extras-precise
             - llvm-toolchain-precise-3.8
           packages:
             - clang-3.8
-            - libsdl2-dev
       env: COMPILER=clang++-3.8
-#before_script:
-#  - sudo apt-get -qq update
-#  - sudo apt-get install -y libsdl2-dev
+before_script:
+  - sudo add-apt-repository -y ppa:team-xbmc/ppa
+  - sudo apt-get -qq update
+  - sudo apt-get install -y libsdl2-dev
 script:
   - mkdir build
   - cd build
