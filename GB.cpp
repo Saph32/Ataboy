@@ -1114,6 +1114,9 @@ bool CPU::Condition() const {
     case CondNZ: return (R.F.Z == 0);
     case CondC: return (R.F.C != 0);
     case CondNC: return (R.F.C == 0);
+    case RETI:
+    case Always:
+        return true;
     }
     return true;
 }
@@ -1620,12 +1623,13 @@ void IO::Tick(System& rSystem)
     Divider.value += 4;
 
     if (TAC & 4) {
-        if (((u8)rSystem.m_cycle_count & m_timer_mask) == 0)
-        if (TIMA == 255) {
-            TIMA = TMA;
-            rSystem.m_cpu.IF.f.timer = 1;
-        } else {
-            ++TIMA;
+        if (((u8)rSystem.m_cycle_count & m_timer_mask) == 0) {
+            if (TIMA == 255) {
+                TIMA = TMA;
+                rSystem.m_cpu.IF.f.timer = 1;
+            } else {
+                ++TIMA;
+            }
         }
     }
 
