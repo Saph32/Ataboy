@@ -5,7 +5,7 @@ How to compile :
 
 Windows:
 
-	- Visual Studio 2015 Update 3 is required.
+	- Visual Studio 2017 is required.
 	- You need to install SDL2 :
 		- Get vcpkg from https://github.com/Microsoft/vcpkg
 		- Follow the instructions for bootstrap

@@ -597,7 +597,7 @@ void CPU::Reset()
 
     IF.value = 0;
     
-    fill(begin(HRAM), end(HRAM), 0);
+    fill(begin(HRAM), end(HRAM), u8(0));
 
     //bQuit = false;
     m_halt = false;
