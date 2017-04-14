@@ -40,6 +40,8 @@
 
 #include <SDL2/SDL.h>
 
+#include "FileIo.h"
+
 using namespace std;
 using namespace std::chrono;
 
@@ -210,7 +212,7 @@ int main(int argc, char* argv[])
     //file_name = R"(D:\emu\gb\Lethal Weapon (USA, Europe).gb)";
     //file_name = R"(D:\emu\gb\Legend of Zelda, The - Link's Awakening (Canada).gb)";
     //file_name = R"(D:\emu\gb\Mario's Picross (USA, Europe) (SGB Enhanced).gb)";
-    //file_name = R"(D:\emu\gb\Metroid II - Return of Samus (World).gb)";
+    file_name = R"(D:\emu\gb\Metroid II - Return of Samus (World).gb)";
     //file_name = R"(D:\emu\gb\Mega Man - Dr. Wily's Revenge (USA).gb)";
     //file_name = R"(D:\emu\gb\Mega Man II (USA).gb)";
     //file_name = R"(D:\emu\gb\Mega Man III (USA).gb)";
@@ -265,19 +267,9 @@ int main(int argc, char* argv[])
 
     //file_name = R"()";
 
-    ifstream file(file_name, ios::binary | ios::ate);
-    streamsize size = file.tellg();
+    auto buffer = LoadFile(file_name);
 
-    if (size < 0)
-    {
-        printf("Bad file\n");
-        return 1;
-    }
-
-    file.seekg(0, std::ios::beg);
-
-    std::vector<char> buffer(size);
-    if (!file.read(buffer.data(), size))
+    if (buffer.empty())
     {
         return 1;
     }
@@ -286,7 +278,10 @@ int main(int argc, char* argv[])
 
     g_keys.value = 0xFF;
 
-    gb.Load(buffer.data(), buffer.size());
+    if (!gb.Load(buffer.data(), buffer.size()))
+    {
+        return 1;
+    }
 
     gb.Reset();
 
@@ -422,7 +417,7 @@ int main(int argc, char* argv[])
                     auto y_axis = SDL_GameControllerGetAxis(controller, SDL_CONTROLLER_AXIS_LEFTY);
                     if (y_axis < -JOYSTICK_DEAD_ZONE) {
                         g_keys.k.up = 0;
-                    } else if (x_axis > JOYSTICK_DEAD_ZONE) {
+                    } else if (y_axis > JOYSTICK_DEAD_ZONE) {
                         g_keys.k.down = 0;
                     }
 
