@@ -212,7 +212,7 @@ int main(int argc, char* argv[])
     //file_name = R"(D:\emu\gb\Lethal Weapon (USA, Europe).gb)";
     //file_name = R"(D:\emu\gb\Legend of Zelda, The - Link's Awakening (Canada).gb)";
     //file_name = R"(D:\emu\gb\Mario's Picross (USA, Europe) (SGB Enhanced).gb)";
-    file_name = R"(D:\emu\gb\Metroid II - Return of Samus (World).gb)";
+    //file_name = R"(D:\emu\gb\Metroid II - Return of Samus (World).gb)";
     //file_name = R"(D:\emu\gb\Mega Man - Dr. Wily's Revenge (USA).gb)";
     //file_name = R"(D:\emu\gb\Mega Man II (USA).gb)";
     //file_name = R"(D:\emu\gb\Mega Man III (USA).gb)";
