@@ -792,8 +792,8 @@ void CPU::ALU(System& rSystem)
 #pragma warning( disable : 4127 )   // warning C4127: conditional expression is constant
 
 
-    bool carry = (alu == ADC || alu == SBC);
-    bool sub = !(alu == ADD || alu == ADC);
+    const bool carry = (alu == ADC || alu == SBC);
+    const bool sub = !(alu == ADD || alu == ADC);
     size_t t = GetOperand8<src>(rSystem);
 
     if (sub) {
@@ -846,7 +846,7 @@ void CPU::BITS(System& rSystem)
 {
 #pragma warning( push )
 #pragma warning( disable : 4127 ) // warning C4127: conditional expression is constant
-    bool z0 = (op == RLA || op == RLCA || op == RRA || op == RRCA);
+    const bool z0 = (op == RLA || op == RLCA || op == RRA || op == RRCA);
     // TODO : Test with size_t
     u8 t = GetOperand8<src>(rSystem);
     u8 prevFC = R.F.C;
@@ -939,12 +939,12 @@ template<CPU::Operand16 dst>
 void CPU::LDSPOF(System& rSystem)
 {
     R.PC++;
-    auto tu = RB(rSystem, R.PC);
-    auto t = reinterpret_cast<signed char&>(tu);
+    const u8 tu = RB(rSystem, R.PC);
+    const auto t = reinterpret_cast<const signed char&>(tu);
     R.PC++;
     R.F.H = (((R.SP & 0x0f) + (tu & 0x0f)) >> 4) & 1;
     R.F.C = (((size_t)(R.SP & 0xff) + tu) >> 8) & 1;
-    u16 t16 = R.SP + t;
+    const u16 t16 = R.SP + t;
     SetOperand16<dst>(t16);
     R.F.Z = 0;
     R.F.N = 0;
@@ -1028,7 +1028,7 @@ void CPU::RET(System& rSystem) {
 
 template<CPU::CondFlag con>
 void CPU::JP(System& rSystem) {
-    u16 t = GetOperand16<OpImm16>(rSystem);
+    const u16 t = GetOperand16<OpImm16>(rSystem);
     if (Condition<con>()) {
         R.PC = t;
         rSystem.Tick();
@@ -1041,10 +1041,10 @@ void CPU::JP(System& rSystem) {
 template<CPU::CondFlag con>
 void CPU::JR(System& rSystem) {
     R.PC++;
-    u8 t = RB(rSystem, R.PC);
+    const u8 t = RB(rSystem, R.PC);
     R.PC++;
     if (Condition<con>()) {
-        R.PC += reinterpret_cast<signed char&>(t);
+        R.PC += reinterpret_cast<const signed char&>(t);
         rSystem.Tick();
     }
 }
@@ -1251,7 +1251,7 @@ bool GamePak::Load(const char * pRom_data, size_t size) {
     m_RAM_bank_count = 0;
     if (m_RAM_size > 0) {
         // TODO : test behavior of RAM < 8K. Does it mirror ?
-        size_t ram_size = max(m_RAM_size, size_t(8 * 1024));
+        const size_t ram_size = max(m_RAM_size, size_t(8 * 1024));
         RAM.resize(ram_size);
         m_RAM_bank_count = ram_size / (8 * 1024);
         m_RAM_bank_mask = m_RAM_bank_count - 1;
@@ -1264,7 +1264,7 @@ bool GamePak::Load(const char * pRom_data, size_t size) {
         m_RAM_bank_mask = 0;
     }
 
-    auto rom_size = (32 * 1024) << m_header.fields.ROMSize;
+    const size_t rom_size = (32 * 1024) << m_header.fields.ROMSize;
     ROM.resize(rom_size);
 
     if (!fnRead(ROM.data(), 0, rom_size)) {
@@ -1557,7 +1557,7 @@ void CPU::DoOAMDMA(System& rSystem) {
 
     if (m_oam_dma_active) {
 
-        u16 addr = m_oam_dma_src + m_oam_dma_index;
+        const u16 addr = m_oam_dma_src + m_oam_dma_index;
         rSystem.m_video.OAM[m_oam_dma_index] = rSystem.BusAccess<Access::Read>(addr);
         ++m_oam_dma_index;
         if (m_oam_dma_index == 160) {
@@ -1571,7 +1571,7 @@ void CPU::Execute(System& rSystem)
     if (m_halt) {
         rSystem.Tick();
     } else {
-        auto opcode = RB(rSystem, R.PC);
+        const u8 opcode = RB(rSystem, R.PC);
         (this->*m_op_codes[opcode])(rSystem);
     }
 
@@ -1647,22 +1647,22 @@ void IO::Tick(System& rSystem)
 
 u8 IO::MakeP1(System& rSystem)
 {
-    u8 OldP1 = P1;
-    u8 v = 0xf;
-    if (P1 & 0x20) {v = v & m_keys.value;}
-    if (P1 & 0x10) {v = v & (m_keys.value >> 4);}
-    P1 = (P1 & 0x30) | v | 0xc0;
-    if (OldP1 & (~P1) & 0xf)
+    const u8 prev_P1 = P1;
+    u8 keys_val = 0xf;
+    if (P1 & 0x20) {keys_val = keys_val & m_keys.value;}
+    if (P1 & 0x10) {keys_val = keys_val & (m_keys.value >> 4);}
+    P1 = (P1 & 0x30) | keys_val | 0xc0;
+    if (prev_P1 & (~P1) & 0xf)
     {
         rSystem.m_cpu.IF.f.joypad = 1;
     }
     return P1;
 }
 
-void IO::SetTAC(u8 v)
+void IO::SetTAC(u8 val)
 {
-    TAC = v;
-    switch (v & 3) {
+    TAC = val;
+    switch (val & 3) {
     case 0 : m_timer_mask = 255; break;
     case 1 : m_timer_mask = 3; break;
     case 2 : m_timer_mask = 15; break;
@@ -1759,14 +1759,14 @@ void Video::Flip(System & rSystem)
 
 void Video::RenderLine()
 {
-    size_t render_y = LY;
+    const size_t render_y = LY;
     if (render_y >= 144) {
         return;
     }
 
     auto fnGetTile = [this](const u8 tile, const u8 yofs, const u8* vramdata) {
-        u16 tiledata = (tile << 4) + (yofs << 1);
-        u8 datah = vramdata[tiledata]; u8 datal = vramdata[tiledata + 1];
+        const u16 tiledata = (tile << 4) + (yofs << 1);
+        const u8 datah = vramdata[tiledata]; u8 datal = vramdata[tiledata + 1];
         u16 data = ((datal & 0x01) << 14)| ((datah & 0x01) << 15)| ((datal & 0x02) << 11)| ((datah & 0x02) << 12)|
             ((datal & 0x04) << 8) | ((datah & 0x04) << 9) | ((datal & 0x08) << 5) | ((datah & 0x08) << 6) |
             ((datal & 0x10) << 2) | ((datah & 0x10) << 3) | ((datal & 0x20) >> 1) | ((datah & 0x20)     ) |
@@ -1807,7 +1807,7 @@ void Video::RenderLine()
         return  pal[3 - pix];
     };
 */
-    u32* line = &m_upFront_buf->pix[render_y * 160];
+    u32* const line = &m_upFront_buf->pix[render_y * 160];
 
     const u8 bgcol[4] = {
         static_cast<u8>(BGP & 0x3),
@@ -1816,7 +1816,7 @@ void Video::RenderLine()
         static_cast<u8>((BGP >> 6) & 3)};
 
     //auto bgfillcol = fnGetRGB(bgcol[0], zero_pal);
-    auto bgfillcol = fnGetRGB(bgcol[0]);
+    u32 bgfillcol = fnGetRGB(bgcol[0]);
     fill_n(line, 160, bgfillcol);
 
     if (!LCDC.bits.lcden)
@@ -1827,7 +1827,8 @@ void Video::RenderLine()
     u8 sprcache[40];
     u8 sprcacheidx = 0;
     u8 lastsprcacheidx = 0;
-    u8 sprsize = LCDC.bits.objsize ? 16 : 8;
+
+    const u8 sprsize = LCDC.bits.objsize ? 16 : 8;
 
     // Find sprites
     if (LCDC.bits.objdisplay)
@@ -1894,11 +1895,11 @@ void Video::RenderLine()
             // Sprite
             for (u8 spridx = 0; spridx < sprcacheidx; spridx+=4)
             {
-                u8 attrib = sprcache[spridx+1];
+                const u8 attrib = sprcache[spridx+1];
                 if ((step == RenderStepSpritesBehind && (attrib & 0x80)) ||
                     (step == RenderStepSpritesOver   && !(attrib & 0x80)))
                 {
-                    u8 sprx = sprcache[spridx];
+                    const u8 sprx = sprcache[spridx];
                     if (sprx < 168)
                     {
                         u16 data = *(u16*)(&sprcache[spridx + 2]);
@@ -1917,8 +1918,8 @@ void Video::RenderLine()
         }
         else
         {
-            const u8* bgData = &VRAM[LCDC.bits.bgwintiledata ? 0 : 0x800];
-            u8 bgAdd = LCDC.bits.bgwintiledata ? 0 : 128;
+            const u8* const bgData = &VRAM[LCDC.bits.bgwintiledata ? 0 : 0x800];
+            const u8 bgAdd = LCDC.bits.bgwintiledata ? 0 : 128;
             u8 bgwinx = SCX & 0x7;
             u16 tileaddr = LCDC.bits.bgtilemap ? 0x1c00 : 0x1800;
             tileaddr += ((((LY + SCY) & 0xff) >> 3) << 5) + (SCX >> 3);
@@ -1935,7 +1936,7 @@ void Video::RenderLine()
                     bgwinx = 7;
                 }
 
-                u8 pixel = bgwindata & 3;
+                const u8 pixel = bgwindata & 3;
                 if (pixel > 0 && x >= 8) {
                     line[x - 8] = fnGetRGB(bgcol[pixel]);
                     //line[x - 8] = fnGetRGB(bgcol[pixel], (bWinOn && x >= WX) ? win_pal : bg_pal);
@@ -1946,7 +1947,7 @@ void Video::RenderLine()
                 {
                     u8 tile = VRAM[tileaddr];
                     tileaddr = (tileaddr & 0xffe0) | ((tileaddr+1) & 0x1f);
-                    tile+=bgAdd;
+                    tile += bgAdd;
                     bgwindata = fnGetTile(tile, bgyofs, bgData);
                     bgwinx = 0;
                 }
@@ -1982,9 +1983,9 @@ void System::RunFrame()
 
 nanoseconds System::RunTime(nanoseconds time_to_run)
 {
-    u64 cycles_to_run = time_to_run.count() * 1024LL * 1024LL / 1000000000LL;
-    auto start_cycle_count = m_cycle_count;
-    auto end_cycle_count = start_cycle_count + cycles_to_run;
+    const u64 cycles_to_run = time_to_run.count() * 1024LL * 1024LL / 1000000000LL;
+    const u64 start_cycle_count = m_cycle_count;
+    const u64 end_cycle_count = start_cycle_count + cycles_to_run;
 
     while (m_cycle_count < end_cycle_count)
     {
@@ -2506,7 +2507,7 @@ void Square1::RunSweep()
 
 void Square1::ComputeSweep(bool write_freq_reg)
 {
-    int adjust = (int)m_sweep.freq_int >> m_sweep.shift;
+    const int adjust = (int)m_sweep.freq_int >> m_sweep.shift;
     if (m_sweep.inc) {
         int new_freq = (int)m_freq + adjust;
         if (new_freq >= 0x800) {

@@ -10,7 +10,7 @@ vector<char> LoadFile(const char * file_name)
     vector<char> buf;
 
     ifstream file(file_name, ios::binary | ios::ate);
-    streamsize size = file.tellg();
+    const streamsize size = file.tellg();
 
     if (size < 0)
     {

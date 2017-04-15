@@ -64,7 +64,7 @@ Action PollEvents()
     SDL_Event event;
     SDL_PollEvent(&event);
 
-    auto prev_keys = g_keys;
+    const auto prev_keys = g_keys;
     switch(event.type) {
     case SDL_QUIT: 
         eAction = Action::Quit;
@@ -123,16 +123,16 @@ struct AudioContext
 
 void SDLAudioCallback(void* userdata, Uint8* stream, int len)
 {
-    auto context = reinterpret_cast<AudioContext*>(userdata);
+    auto pContext = reinterpret_cast<AudioContext*>(userdata);
 
     size_t pos = 0;
     {
-        lock_guard<mutex> lock(context->mtx);
-        pos = context->pos;
+        lock_guard<mutex> lock(pContext->mtx);
+        pos = pContext->pos;
     }
 
-    size_t nb_samples_needed = len / sizeof(GB::AudioSample);
-    size_t nb_samples_have = pos - context->prev_pos;
+    const size_t nb_samples_needed = len / sizeof(GB::AudioSample);
+    const size_t nb_samples_have = pos - pContext->prev_pos;
 
     if (nb_samples_have < nb_samples_needed)
     {
@@ -141,24 +141,24 @@ void SDLAudioCallback(void* userdata, Uint8* stream, int len)
         return;
     }
 
-    size_t read_pos = context->prev_pos + nb_samples_needed;
-    size_t buf_pos = read_pos % context->buf_size;
-    size_t buf_prev_pos = context->prev_pos % context->buf_size;
+    const size_t read_pos = pContext->prev_pos + nb_samples_needed;
+    const size_t buf_pos = read_pos % pContext->buf_size;
+    const size_t buf_prev_pos = pContext->prev_pos % pContext->buf_size;
 
     if (buf_pos > buf_prev_pos)
     {
         // No wrap around
-        memcpy(stream, reinterpret_cast<const Uint8*>(&context->pBuf[buf_prev_pos]), len);
+        memcpy(stream, reinterpret_cast<const Uint8*>(&pContext->pBuf[buf_prev_pos]), len);
     }
     else
     {
-        size_t till_end = context->buf_size - buf_prev_pos;
-        size_t till_end_bytes = till_end * sizeof(GB::AudioSample);
-        memcpy(stream, reinterpret_cast<const Uint8*>(&context->pBuf[buf_prev_pos]), till_end_bytes);
-        memcpy(stream + till_end_bytes, reinterpret_cast<const Uint8*>(&context->pBuf), (size_t)len - till_end_bytes);
+        const size_t till_end = pContext->buf_size - buf_prev_pos;
+        const size_t till_end_bytes = till_end * sizeof(GB::AudioSample);
+        memcpy(stream, reinterpret_cast<const Uint8*>(&pContext->pBuf[buf_prev_pos]), till_end_bytes);
+        memcpy(stream + till_end_bytes, reinterpret_cast<const Uint8*>(&pContext->pBuf), (size_t)len - till_end_bytes);
     }
 
-    context->prev_pos = read_pos;
+    pContext->prev_pos = read_pos;
 }
 
 int main(int argc, char* argv[])
@@ -166,8 +166,8 @@ int main(int argc, char* argv[])
     (void)argc;
     (void)argv;
 
-    bool bUseSDL = true;
-    bool bUseVSync = true;
+    bool use_SDL = true;
+    bool use_vsync = true;
     int speed_factor = 1;
 
     const char* file_name = nullptr;
@@ -212,7 +212,7 @@ int main(int argc, char* argv[])
     //file_name = R"(D:\emu\gb\Lethal Weapon (USA, Europe).gb)";
     //file_name = R"(D:\emu\gb\Legend of Zelda, The - Link's Awakening (Canada).gb)";
     //file_name = R"(D:\emu\gb\Mario's Picross (USA, Europe) (SGB Enhanced).gb)";
-    file_name = R"(D:\emu\gb\Metroid II - Return of Samus (World).gb)";
+    //file_name = R"(D:\emu\gb\Metroid II - Return of Samus (World).gb)";
     //file_name = R"(D:\emu\gb\Mega Man - Dr. Wily's Revenge (USA).gb)";
     //file_name = R"(D:\emu\gb\Mega Man II (USA).gb)";
     //file_name = R"(D:\emu\gb\Mega Man III (USA).gb)";
@@ -267,7 +267,7 @@ int main(int argc, char* argv[])
 
     //file_name = R"()";
 
-    auto buffer = LoadFile(file_name);
+    const auto buffer = LoadFile(file_name);
 
     if (buffer.empty())
     {
@@ -285,7 +285,7 @@ int main(int argc, char* argv[])
 
     gb.Reset();
 
-    int zoom = 4;
+    const int zoom = 4;
 
     AudioContext audio_context = {};
 
@@ -298,7 +298,7 @@ int main(int argc, char* argv[])
     SDL_AudioDeviceID audio_dev = 0;
     SDL_GameController* controller = nullptr;
 
-    if (bUseSDL)
+    if (use_SDL)
     {
         SDL_Init(SDL_INIT_EVERYTHING);
 
@@ -314,7 +314,7 @@ int main(int argc, char* argv[])
 
         Uint32 renderer_flags = 0;
 
-        if (bUseVSync)
+        if (use_vsync)
         {
             renderer_flags |= SDL_RENDERER_PRESENTVSYNC;
         }
@@ -374,7 +374,7 @@ int main(int argc, char* argv[])
     auto start_time = high_resolution_clock::now();
     int nb_frames = 0;
 
-    if (bUseSDL)
+    if (use_SDL)
     {
         SDL_PauseAudioDevice(audio_dev, 0);
     }
@@ -387,7 +387,7 @@ int main(int argc, char* argv[])
     while(!bQuit)
     {
         
-        if (bUseSDL)
+        if (use_SDL)
         {
             Action eAction = Action::None;
             do
@@ -407,14 +407,14 @@ int main(int argc, char* argv[])
                     CHECK_BUTTON(SDL_CONTROLLER_BUTTON_START, g_keys.k.start);
                     CHECK_BUTTON(SDL_CONTROLLER_BUTTON_BACK, g_keys.k.select);
 
-                    auto x_axis = SDL_GameControllerGetAxis(controller, SDL_CONTROLLER_AXIS_LEFTX);
+                    const auto x_axis = SDL_GameControllerGetAxis(controller, SDL_CONTROLLER_AXIS_LEFTX);
                     if (x_axis < -JOYSTICK_DEAD_ZONE) {
                         g_keys.k.left = 0;
                     } else if (x_axis > JOYSTICK_DEAD_ZONE) {
                         g_keys.k.right = 0;
                     }
 
-                    auto y_axis = SDL_GameControllerGetAxis(controller, SDL_CONTROLLER_AXIS_LEFTY);
+                    const auto y_axis = SDL_GameControllerGetAxis(controller, SDL_CONTROLLER_AXIS_LEFTY);
                     if (y_axis < -JOYSTICK_DEAD_ZONE) {
                         g_keys.k.up = 0;
                     } else if (y_axis > JOYSTICK_DEAD_ZONE) {
@@ -456,16 +456,16 @@ int main(int argc, char* argv[])
         }
 
 
-        auto cur_frame_number = gb.GetFrameNumber();
+        const auto cur_frame_number = gb.GetFrameNumber();
 
         if (cur_frame_number != last_rendered_frame) {
             ++nb_frames;
             last_rendered_frame = cur_frame_number;
 
-            if (bUseSDL) {
-                auto pix = gb.GetPixels();
+            if (use_SDL) {
+                const auto pPix = gb.GetPixels();
 
-                SDL_UpdateTexture(pTexture, nullptr, pix, sizeof(pix[0]) * 160);
+                SDL_UpdateTexture(pTexture, nullptr, pPix, sizeof(pPix[0]) * 160);
 
                 SDL_RenderClear(pRenderer);
                 SDL_RenderCopy(pRenderer, pTexture, NULL, NULL);
@@ -473,7 +473,7 @@ int main(int argc, char* argv[])
             }
         }
 
-        auto time_now = high_resolution_clock::now();
+        const auto time_now = high_resolution_clock::now();
 
         auto elapsed = time_now - run_time - pause_time;
 
@@ -484,14 +484,14 @@ int main(int argc, char* argv[])
             elapsed = MAX_SKIP_TIME;
         }
 
-        auto emu_elapsed = gb.RunTime(duration_cast<nanoseconds>(elapsed) * speed_factor);
+        const auto emu_elapsed = gb.RunTime(duration_cast<nanoseconds>(elapsed) * speed_factor);
 
         run_time += emu_elapsed / speed_factor;
 
         if (start_time + seconds(1) < time_now)
         {
-            duration<float> fsec = time_now - start_time;
-            float fps = 1.0f * nb_frames / fsec.count();
+            const duration<float> fsec = time_now - start_time;
+            const float fps = 1.0f * nb_frames / fsec.count();
             printf("FPS:%.2f (%.0f%%) %d %d %d %d\r", fps, fps / 60 * 100, g_keys.k.left, g_keys.k.right, g_keys.k.up, g_keys.k.down);
             nb_frames = 0;
             start_time = time_now;
@@ -500,7 +500,7 @@ int main(int argc, char* argv[])
         this_thread::sleep_for(milliseconds(1));
     }
 
-    if (bUseSDL)
+    if (use_SDL)
     {
         SDL_PauseAudioDevice(audio_dev, 1);
         SDL_AudioQuit();
