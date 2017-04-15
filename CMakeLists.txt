@@ -7,7 +7,7 @@ set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 find_package(SDL2 REQUIRED)
 include_directories(${SDL2_INCLUDE_DIR})
 
-set(SOURCE_FILES Main.cpp GB.cpp GB.h)
+set(SOURCE_FILES Main.cpp GB.cpp GB.h FileIo.cpp FileIo.h)
 
 set(GCC_COMPILE_FLAGS "-Wall")
 set(GCC_LINK_FLAGS    "")
