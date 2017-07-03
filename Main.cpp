@@ -435,9 +435,6 @@ int main(int argc, char* argv[])
                 else if (eAction == Action::KeyUpdate)
                 {
                     gb.UpdateKeys(g_keys);
-#ifndef _DEBUG
-                    printf(""); // Workaround weird SDL bug
-#endif
                 }
 
             } while (eAction != Action::None);
