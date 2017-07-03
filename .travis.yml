@@ -29,7 +29,7 @@ matrix:
 before_script:
   - sudo add-apt-repository -y ppa:team-xbmc/ppa
   - sudo apt-get -qq update
-  - sudo apt-get install -y libsdl2-dev
+  - sudo apt-get install -y libsdl2-dev libboost-dev libboost-filesystem-dev
 script:
   - mkdir build
   - cd build
