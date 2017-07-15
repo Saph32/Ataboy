@@ -8,7 +8,7 @@ find_package(SDL2 REQUIRED)
 include_directories(${SDL2_INCLUDE_DIR})
 
 set(Boost_USE_STATIC_LIBS ON)
-FIND_PACKAGE( Boost 1.54 COMPONENTS filesystem REQUIRED )
+FIND_PACKAGE( Boost 1.54 COMPONENTS filesystem system REQUIRED )
 INCLUDE_DIRECTORIES( ${Boost_INCLUDE_DIR} )
 
 set(SOURCE_FILES
