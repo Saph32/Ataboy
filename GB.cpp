@@ -295,10 +295,13 @@ public:
 
     bool m_ram_enabled = false;
 
+    ROM_Header m_public_header = {};
+
     template<Access eAccess> u8 ROMAccess(const u16 addr, const u8 v = 0);
     template<Access eAccess> u8 RAMAccess(const u16 addr, const u8 v = 0);
 
-    bool Load(const char* pRom_data, size_t size);
+    bool Load(const char* pROM_data, size_t size);
+    bool LoadSaveRAM(const char* pRAM_data, size_t size);
 };
 
 class IO
@@ -538,6 +541,11 @@ bool GB::Load(const char * pRom_data, size_t size)
     return m_pSystem->m_game_pak.Load(pRom_data, size);
 }
 
+bool GB::LoadSaveRAM(const char * pRom_data, size_t size)
+{
+    return m_pSystem->m_game_pak.LoadSaveRAM(pRom_data, size);
+}
+
 void GB::Reset()
 {
     m_pSystem->Reset();
@@ -582,6 +590,16 @@ const size_t GB::GetAudioBufSize() const
 size_t GB::GetAudioBufPos() const
 {
     return m_pSystem->m_audio.m_audio_pos;
+}
+
+const ROM_Header & GB::RefHeader() const
+{
+    return m_pSystem->m_game_pak.m_public_header;
+}
+
+std::pair<const char*, size_t> GB::RefSaveRAM() const
+{
+    return {(const char*)(m_pSystem->m_game_pak.RAM.data()), m_pSystem->m_game_pak.m_RAM_size};
 }
 
 void CPU::Reset()
@@ -1198,10 +1216,10 @@ const array<CPU::OpCodeFn, 256> CPU::m_op_codes_CB = {
     STD_OPERANDS(&CPU::SET, 4),    STD_OPERANDS(&CPU::SET, 5),    STD_OPERANDS(&CPU::SET, 6),    STD_OPERANDS(&CPU::SET, 7),
 };
 
-bool GamePak::Load(const char * pRom_data, size_t size) {
+bool GamePak::Load(const char * pROM_data, size_t size) {
     auto fnRead = [&](auto dest, size_t src_offset, size_t read_size) -> bool {
         if (src_offset + read_size <= size) {
-            memcpy(dest, pRom_data + src_offset, read_size);
+            memcpy(dest, pROM_data + src_offset, read_size);
             return true;
         }
         else {
@@ -1210,7 +1228,7 @@ bool GamePak::Load(const char * pRom_data, size_t size) {
     };
 
     if (!fnRead(&m_header, 0x100, m_header.raw.size())) {
-        printf("Error : Invalid header\n");
+        printf("ERROR : Invalid header\n");
         return false;
     }
 
@@ -1264,7 +1282,7 @@ bool GamePak::Load(const char * pRom_data, size_t size) {
         m_RAM_bank_mask = 0;
     }
 
-    const size_t rom_size = (32 * 1024) << m_header.fields.ROMSize;
+    const size_t rom_size = (32 * 1024ULL) << m_header.fields.ROMSize;
     ROM.resize(rom_size);
 
     if (!fnRead(ROM.data(), 0, rom_size)) {
@@ -1276,6 +1294,21 @@ bool GamePak::Load(const char * pRom_data, size_t size) {
     m_ROM_bank_count = rom_size / (16 * 1024);
     m_ROM_bank_mask = m_ROM_bank_count - 1;
 
+    m_public_header.title = title;
+    m_public_header.RAM_size = m_RAM_size;
+
+    return true;
+}
+
+bool GamePak::LoadSaveRAM(const char * pRAM_data, size_t size)
+{
+    if (m_RAM_size != size)
+    {
+        printf("ERROR : Incorrect SaveRAM size\n");
+        return false;
+    }
+
+    memcpy(RAM.data(), pRAM_data, min(size, RAM.size()));
     return true;
 }
 
@@ -1323,7 +1356,7 @@ u8 GamePak::ROMAccess<Access::Write>(const u16 addr, const u8 v) {
     auto fnComputeMBC1ROMBank = [this]() {
         m_cur_ROM_bank = m_ROM_bank_select;
         if (m_MBC1_extra_mode == MBC1ExtraMode::ROM) {
-            m_cur_ROM_bank += (m_MBC1_extra_select << 5);
+            m_cur_ROM_bank += ((size_t)m_MBC1_extra_select << 5);
         }
     };
     
@@ -1364,7 +1397,7 @@ u8 GamePak::ROMAccess<Access::Write>(const u16 addr, const u8 v) {
                 m_MBC5_high_ROM_bank_select = v & 1;
             }
             m_cur_ROM_bank = m_ROM_bank_select;
-            m_cur_ROM_bank += m_MBC5_high_ROM_bank_select << 8;
+            m_cur_ROM_bank += (size_t)m_MBC5_high_ROM_bank_select << 8;
             fnUpdateCurROMBank();
             break;
         }
@@ -1764,7 +1797,7 @@ void Video::RenderLine()
         return;
     }
 
-    auto fnGetTile = [this](const u8 tile, const u8 yofs, const u8* vramdata) {
+    auto fnGetTile = [](const u8 tile, const u8 yofs, const u8* vramdata) {
         const u16 tiledata = (tile << 4) + (yofs << 1);
         const u8 datah = vramdata[tiledata]; u8 datal = vramdata[tiledata + 1];
         u16 data = ((datal & 0x01) << 14)| ((datah & 0x01) << 15)| ((datal & 0x02) << 11)| ((datah & 0x02) << 12)|

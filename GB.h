@@ -27,6 +27,8 @@
 
 #include <memory>
 #include <chrono>
+#include <string>
+#include <utility>
 
 namespace GB
 {
@@ -37,6 +39,12 @@ typedef unsigned int    u32;
 typedef unsigned long long int u64;
 typedef signed short i16;
 typedef signed int i32;
+
+struct ROM_Header
+{
+    std::string title;
+    size_t RAM_size;
+};
 
 class System;
 
@@ -66,7 +74,8 @@ public:
     GB();
     ~GB();
 
-    bool Load(const char* pRom_data, size_t size);
+    bool Load(const char* pROM_data, size_t size);
+    bool LoadSaveRAM(const char* pRAM_data, size_t size);
 
     void Reset();
 
@@ -78,6 +87,9 @@ public:
     const AudioSample* GetAudioBuf() const;
     const size_t GetAudioBufSize() const;
     size_t GetAudioBufPos() const;
+
+    const ROM_Header& RefHeader() const;
+    std::pair<const char*, size_t> RefSaveRAM() const;
 
 private:
 

@@ -32,24 +32,32 @@
 #include <fstream>
 #include <cstdio>
 
+#include <boost/filesystem.hpp>
+
 using namespace std;
+
+namespace filesystem = boost::filesystem;
 
 vector<char> LoadFile(const char * file_name)
 {
     vector<char> buf;
 
-    ifstream file(file_name, ios::binary | ios::ate);
-    const streamsize size = file.tellg();
-
-    if (size < 0)
+    if (!filesystem::exists(file_name))
     {
-        printf("Bad file\n");
+        printf("ERROR : File %s doesn't exists\n", file_name);
+        return {};
+    }
+
+    ifstream file(file_name, ios::binary);
+
+    const size_t size = filesystem::file_size(file_name);
+    if (size == 0)
+    {
+        printf("ERROR : File %s is empty\n", file_name);
         return {};
     }
 
     buf.resize(size);
-
-    file.seekg(0, std::ios::beg);
 
     if (!file.read(buf.data(), size))
     {
@@ -57,4 +65,68 @@ vector<char> LoadFile(const char * file_name)
     }
 
     return buf;
+}
+
+std::string GetSaveFileName(const char* gamepak_file_name)
+{
+    filesystem::path gamepak(gamepak_file_name);
+
+    // Build save file name
+    filesystem::path savefile = gamepak.parent_path().string() + gamepak.stem().string() + ".sav";
+
+    // Check with capital .SAV extension
+    savefile = gamepak.parent_path().string() + gamepak.stem().string() + ".SAV";
+    if (exists(savefile))
+    {
+        return savefile.string();
+    }
+
+    // Return default with lowercase extension
+    savefile = gamepak.parent_path().string() + gamepak.stem().string() + ".sav";
+    return savefile.string();
+}
+
+std::vector<char> LoadSaveFile(const char * file_name, const size_t expected_size)
+{
+    std::vector<char> buf;
+
+    if (!filesystem::exists(file_name))
+    {
+        printf("WARNING : SAV file doesn't exists. Will create a new one.");
+        return buf;
+    }
+
+    const size_t actual_file_size = filesystem::file_size(file_name);
+    if (actual_file_size < expected_size)
+    {
+        printf("WARNING : SAV file size too small (expected:%d got:%d). File will be ignored and overwritten.\n", (int)expected_size, (int)actual_file_size);
+        return buf;
+    }
+
+    ifstream file(file_name, ios::binary);
+
+    buf.resize(actual_file_size);
+
+    if (!file.read(buf.data(), actual_file_size))
+    {
+        printf("WARNING : Error reading SAV file. File will be ignored and overwritten.\n");
+        return{};
+    }
+
+    return buf;
+}
+
+bool SaveSaveFile(const char * file_name, const char * data, const size_t size)
+{
+    ofstream out(file_name, ios::binary);
+
+    if (!out)
+    {
+        printf("ERROR : Cannot write save file %s\n", file_name);
+        return false;
+    }
+
+    out.write(data, size);
+
+    return true;
 }

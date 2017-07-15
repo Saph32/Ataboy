@@ -267,7 +267,7 @@ int main(int argc, char* argv[])
 
     //file_name = R"()";
 
-    const auto buffer = LoadFile(file_name);
+    const vector<char> buffer = LoadFile(file_name);
 
     if (buffer.empty())
     {
@@ -283,7 +283,32 @@ int main(int argc, char* argv[])
         return 1;
     }
 
+    const GB::ROM_Header& rHeader = gb.RefHeader();
+
     gb.Reset();
+
+    string save_filename;
+    if (rHeader.RAM_size > 0)
+    {
+        // Load save RAM file
+        save_filename = GetSaveFileName(file_name);
+
+        if (!save_filename.empty())
+        {
+            printf("Loading save file %s...\n", save_filename.c_str());
+
+            vector<char> save_buf = LoadSaveFile(save_filename.c_str(), rHeader.RAM_size);
+
+            if (!save_buf.empty())
+            {
+                if (!gb.LoadSaveRAM(save_buf.data(), save_buf.size()))
+                {
+                    printf("ERROR:Failed to load save file\n");
+                    return 7;
+                }
+            }
+        }
+    }
 
     const int zoom = 4;
 
@@ -309,7 +334,7 @@ int main(int argc, char* argv[])
         if (!pWindow)
         {
             printf("Can't initialize SDL window\n");
-            return 1;
+            return 3;
         }
 
         Uint32 renderer_flags = 0;
@@ -324,7 +349,7 @@ int main(int argc, char* argv[])
         if (!pRenderer)
         {
             printf("Can't initialize SDL renderer\n");
-            return 1;
+            return 4;
         }
 
         SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "nearest");
@@ -337,7 +362,7 @@ int main(int argc, char* argv[])
         if (!pTexture)
         {
             printf("Can't initialize SDL texture\n");
-            return 1;
+            return 5;
         }
 
         SDL_AudioSpec audio_want = {};
@@ -355,7 +380,7 @@ int main(int argc, char* argv[])
         if (!audio_dev)
         {
             printf("Can't initialize SDL audio\n");
-            return 1;
+            return 6;
         }
 
         for (int i = 0; i < SDL_NumJoysticks(); ++i) {
@@ -386,7 +411,6 @@ int main(int argc, char* argv[])
     bool bQuit = false;
     while(!bQuit)
     {
-        
         if (use_SDL)
         {
             Action eAction = Action::None;
@@ -489,12 +513,18 @@ int main(int argc, char* argv[])
         {
             const duration<float> fsec = time_now - start_time;
             const float fps = 1.0f * nb_frames / fsec.count();
-            printf("FPS:%.2f (%.0f%%) %d %d %d %d\r", fps, fps / 60 * 100, g_keys.k.left, g_keys.k.right, g_keys.k.up, g_keys.k.down);
+            printf("FPS:%.2f (%.0f%%)\r", fps, fps / 60 * 100);
             nb_frames = 0;
             start_time = time_now;
         }
 
         this_thread::sleep_for(milliseconds(1));
+    }
+
+    if (!save_filename.empty())
+    {
+        const auto save_RAM_info = gb.RefSaveRAM();
+        SaveSaveFile(save_filename.c_str(), save_RAM_info.first, save_RAM_info.second);
     }
 
     if (use_SDL)
