@@ -19,7 +19,10 @@ set(SOURCE_FILES
     GB.cpp
     GB.h
     FileIo.cpp
-    FileIo.h)
+    FileIo.h
+	ImageIo.cpp
+	ImageIo.h
+	at_scope_exit.h)
 
 set(GCC_COMPILE_FLAGS "-Wall")
 set(GCC_LINK_FLAGS    "")
