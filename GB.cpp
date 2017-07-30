@@ -1286,7 +1286,7 @@ bool GamePak::Load(const char * pROM_data, size_t size) {
     ROM.resize(rom_size);
 
     if (!fnRead(ROM.data(), 0, rom_size)) {
-        printf("Error : ROM too small#n");
+        printf("Error : ROM too small\n");
         return false;
     }
 

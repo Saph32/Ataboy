@@ -41,6 +41,7 @@
 #include <SDL2/SDL.h>
 
 #include "FileIo.h"
+#include "ImageIo.h"
 
 using namespace std;
 using namespace std::chrono;
@@ -168,7 +169,10 @@ int main(int argc, char* argv[])
 
     bool use_SDL = true;
     bool use_vsync = true;
-    int speed_factor = 1;
+    bool save_screenshot_on_exit = false;
+    int speed_factor = 1;   // 0 = unlimited
+
+    int run_frame_count = 0;
 
     const char* file_name = nullptr;
     if (argc > 1)
@@ -479,46 +483,75 @@ int main(int argc, char* argv[])
 
         const auto cur_frame_number = gb.GetFrameNumber();
 
+        const bool frame_count_exceeded = run_frame_count > 0 && (int)cur_frame_number >= run_frame_count;
+
         if (cur_frame_number != last_rendered_frame) {
             ++nb_frames;
             last_rendered_frame = cur_frame_number;
 
-            if (use_SDL) {
+            const bool save_screenshot = save_screenshot_on_exit && frame_count_exceeded;
+
+            if (use_SDL || save_screenshot) {
                 const auto pPix = gb.GetPixels();
 
-                SDL_UpdateTexture(pTexture, nullptr, pPix, sizeof(pPix[0]) * 160);
+                if (use_SDL)
+                {
+                    SDL_UpdateTexture(pTexture, nullptr, pPix, sizeof(pPix[0]) * 160);
 
-                SDL_RenderClear(pRenderer);
-                SDL_RenderCopy(pRenderer, pTexture, NULL, NULL);
-                SDL_RenderPresent(pRenderer);
+                    SDL_RenderClear(pRenderer);
+                    SDL_RenderCopy(pRenderer, pTexture, NULL, NULL);
+                    SDL_RenderPresent(pRenderer);
+                }
+
+                if (save_screenshot)
+                {
+                    string image_name = GetScreenShotFileName(file_name);
+
+                    if (!image_name.empty())
+                    {
+                        SaveImage(image_name.c_str(), pPix);
+                    }
+                }
             }
         }
 
-        const auto time_now = high_resolution_clock::now();
-
-        auto elapsed = time_now - run_time - pause_time;
-
-        constexpr auto MAX_SKIP_TIME = milliseconds(50);
-        if (elapsed > MAX_SKIP_TIME)
+        if (speed_factor == 0)
         {
-            pause_time += elapsed - MAX_SKIP_TIME;
-            elapsed = MAX_SKIP_TIME;
+            gb.RunTime(nanoseconds(16666667));
+        }
+        else
+        {
+            const auto time_now = high_resolution_clock::now();
+
+            auto elapsed = time_now - run_time - pause_time;
+
+            constexpr auto MAX_SKIP_TIME = milliseconds(50);
+            if (elapsed > MAX_SKIP_TIME)
+            {
+                pause_time += elapsed - MAX_SKIP_TIME;
+                elapsed = MAX_SKIP_TIME;
+            }
+
+            const auto emu_elapsed = gb.RunTime(duration_cast<nanoseconds>(elapsed) * speed_factor);
+
+            run_time += emu_elapsed / speed_factor;
+
+            if (start_time + seconds(1) < time_now)
+            {
+                const duration<float> fsec = time_now - start_time;
+                const float fps = 1.0f * nb_frames / fsec.count();
+                printf("FPS:%.2f (%.0f%%)\r", fps, fps / 60 * 100);
+                nb_frames = 0;
+                start_time = time_now;
+            }
+
+            this_thread::sleep_for(milliseconds(1));
         }
 
-        const auto emu_elapsed = gb.RunTime(duration_cast<nanoseconds>(elapsed) * speed_factor);
-
-        run_time += emu_elapsed / speed_factor;
-
-        if (start_time + seconds(1) < time_now)
+        if (frame_count_exceeded)
         {
-            const duration<float> fsec = time_now - start_time;
-            const float fps = 1.0f * nb_frames / fsec.count();
-            printf("FPS:%.2f (%.0f%%)\r", fps, fps / 60 * 100);
-            nb_frames = 0;
-            start_time = time_now;
+            break;
         }
-
-        this_thread::sleep_for(milliseconds(1));
     }
 
     if (!save_filename.empty())

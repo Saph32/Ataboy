@@ -12,6 +12,7 @@ Windows:
 		- .\vcpkg integrate install
 		- .\vcpkg install sdl2:x64-windows
 		- .\vcpkg install boost:x64-windows
+		- .\vcpkg install libpng:x64-windows
 	- Open Ataboy.sln
 	- Build
 	
@@ -20,6 +21,7 @@ Linux:
 	- C++14 compatible compiler required
 	- Install SDL2 with your package manager
 	- Install Boost (1.54 or higher) with your package manager
+	- Install libpng with your package manager
 	- Install CMake with your package manager
 	- Open a terminal on the source directory
 	- mkdir build

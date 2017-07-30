@@ -24,12 +24,21 @@
     <ClCompile Include="FileIo.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="ImageIo.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="GB.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="FileIo.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ImageIo.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="at_scope_exit.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

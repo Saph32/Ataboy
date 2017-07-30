@@ -11,6 +11,9 @@ set(Boost_USE_STATIC_LIBS ON)
 FIND_PACKAGE( Boost 1.54 COMPONENTS filesystem system REQUIRED )
 INCLUDE_DIRECTORIES( ${Boost_INCLUDE_DIR} )
 
+find_package(PNG REQUIRED)
+include_directories(${PNG_INCLUDE_DIR})
+
 set(SOURCE_FILES
     Main.cpp
     GB.cpp
@@ -28,6 +31,6 @@ set( CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} ${GCC_COVERAGE_LINK_FLAG
 MESSAGE( STATUS "CMAKE_CXX_FLAGS: " ${CMAKE_CXX_FLAGS} )
 
 add_executable(ataboy ${SOURCE_FILES})
-target_link_libraries(ataboy ${SDL2_LIBRARY} ${Boost_LIBRARIES})
+target_link_libraries(ataboy ${SDL2_LIBRARY} ${Boost_LIBRARIES} ${PNG_LIBRARY})
 #set_property(TARGET ataboy PROPERTY CXX_STANDARD 14)
 
