@@ -124,6 +124,11 @@ struct AudioContext
 
 void SDLAudioCallback(void* userdata, Uint8* stream, int len)
 {
+    if (len <= 0)
+    {
+        return;
+    }
+
     auto pContext = reinterpret_cast<AudioContext*>(userdata);
 
     size_t pos = 0;
@@ -132,13 +137,13 @@ void SDLAudioCallback(void* userdata, Uint8* stream, int len)
         pos = pContext->pos;
     }
 
-    const size_t nb_samples_needed = len / sizeof(GB::AudioSample);
+    const size_t nb_samples_needed = (size_t)len / sizeof(GB::AudioSample);
     const size_t nb_samples_have = pos - pContext->prev_pos;
 
     if (nb_samples_have < nb_samples_needed)
     {
         // Fill with silence
-        memset(stream, 0, len);
+        memset(stream, 0, (size_t)len);
         return;
     }
 
@@ -149,7 +154,7 @@ void SDLAudioCallback(void* userdata, Uint8* stream, int len)
     if (buf_pos > buf_prev_pos)
     {
         // No wrap around
-        memcpy(stream, reinterpret_cast<const Uint8*>(&pContext->pBuf[buf_prev_pos]), len);
+        memcpy(stream, reinterpret_cast<const Uint8*>(&pContext->pBuf[buf_prev_pos]), (size_t)len);
     }
     else
     {

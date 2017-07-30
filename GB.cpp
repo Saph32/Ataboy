@@ -454,7 +454,7 @@ public:
     u8 NR50 = 0;
     u8 NR51 = 0;
     u8 NR52 = 0;
-    array<u8, 16> AUD3WAVERAM;
+    array<u8, 16> AUD3WAVERAM = {};
 
     static constexpr size_t AUDIO_BUF_SIZE_POW2 = 13;
     static constexpr size_t AUDIO_BUF_SIZE = (1 << AUDIO_BUF_SIZE_POW2);
@@ -522,7 +522,7 @@ public:
 
     void Reset();
     void RunFrame();
-    nanoseconds RunTime(nanoseconds time_to_run);
+    nanoseconds RunTime(const nanoseconds& time_to_run);
 
     template<Access eAccess> u8 BusAccess(u16 addr, u8 v = 0);
 };
@@ -556,7 +556,7 @@ void GB::RunFrame()
     m_pSystem->RunFrame();
 }
 
-std::chrono::nanoseconds GB::RunTime(std::chrono::nanoseconds time_to_run)
+std::chrono::nanoseconds GB::RunTime(const std::chrono::nanoseconds& time_to_run)
 {
     return m_pSystem->RunTime(time_to_run);
 }
@@ -2014,7 +2014,7 @@ void System::RunFrame()
     }
 }
 
-nanoseconds System::RunTime(nanoseconds time_to_run)
+nanoseconds System::RunTime(const nanoseconds& time_to_run)
 {
     const u64 cycles_to_run = time_to_run.count() * 1024LL * 1024LL / 1000000000LL;
     const u64 start_cycle_count = m_cycle_count;

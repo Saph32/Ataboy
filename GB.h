@@ -80,7 +80,7 @@ public:
     void Reset();
 
     void RunFrame();
-    std::chrono::nanoseconds RunTime(std::chrono::nanoseconds time_to_run);
+    std::chrono::nanoseconds RunTime(const std::chrono::nanoseconds& time_to_run);
     u32 GetFrameNumber();
     const u32* GetPixels() const;
     void UpdateKeys(const Keys& rKeys);
