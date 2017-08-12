@@ -114,7 +114,7 @@ public:
     static const array<OpCodeFn, 256> m_op_codes;
     static const array<OpCodeFn, 256> m_op_codes_CB;
 
-    void Reset();
+    void Reset(ResetOption reset_opt);
 
     u8   RB(System& rSystem, const u16 addr);
     void WB(System& rSystem, const u16 addr, const u8 v);
@@ -220,7 +220,7 @@ public:
     unique_ptr<FrameBuf> m_upFront_buf;
     unique_ptr<FrameBuf> m_upBack_buf;
 
-    void Reset();
+    void Reset(ResetOption reset_opt);
 
     void Tick(System& rSystem);
 
@@ -331,7 +331,7 @@ public:
 
     Keys m_keys = {};
     
-    void Reset();
+    void Reset(ResetOption reset_opt);
 
     void Tick(System& m_rSystem);
 
@@ -482,7 +482,7 @@ public:
     i32 m_left_cap = 0;
     i32 m_right_cap = 0;
 
-    void Reset();
+    void Reset(ResetOption reset_opt);
     void Tick(System&);
 
     template<Access eAccess> u8 RegAccess(const u8 addr, const u8 v = 0);
@@ -499,7 +499,7 @@ class System
 public:
 
     CPU m_cpu;
-    
+
     bool m_new_frame = false;
     u32 m_frame_number = 0;
     u64 m_cycle_count = 0;
@@ -511,6 +511,9 @@ public:
 
     array<u8, 8 * 1024> RAM = {};
 
+    array<u8, 256> m_boot_ROM = {};
+    bool m_boot_rom_active = false;
+
     void Tick()
     {
         m_video.Tick(*this);
@@ -520,7 +523,7 @@ public:
         ++m_cycle_count;
     }
 
-    void Reset();
+    void Reset(ResetOption reset_opt);
     void RunFrame();
     nanoseconds RunTime(const nanoseconds& time_to_run);
 
@@ -546,9 +549,18 @@ bool GB::LoadSaveRAM(const char * pRom_data, size_t size)
     return m_pSystem->m_game_pak.LoadSaveRAM(pRom_data, size);
 }
 
-void GB::Reset()
+bool GB::LoadBootROM(const char * pROM_data, size_t size)
 {
-    m_pSystem->Reset();
+    if (size != 256) {
+        return false;
+    }
+
+    memcpy(m_pSystem->m_boot_ROM.data(), pROM_data, m_pSystem->m_boot_ROM.size());
+}
+
+void GB::Reset(ResetOption reset_opt)
+{
+    m_pSystem->Reset(reset_opt);
 }
 
 void GB::RunFrame()
@@ -602,9 +614,16 @@ std::pair<const char*, size_t> GB::RefSaveRAM() const
     return {(const char*)(m_pSystem->m_game_pak.RAM.data()), m_pSystem->m_game_pak.m_RAM_size};
 }
 
-void CPU::Reset()
+void CPU::Reset(ResetOption reset_opt)
 {
-    R.PC = 0x100;
+    if (reset_opt & ResetOption_USE_BOOT_ROM)
+    {
+        R.PC = 0x000;
+    }
+    else
+    {
+        R.PC = 0x100;
+    }
     R.SP = 0xFFFE;
     R.af8.A = 0x01;
     R.af8.FLAGS = 0xB0;
@@ -640,6 +659,9 @@ template<Access eAccess>
 u8 System::BusAccess(u16 addr, u8 v) {
 #pragma warning( push )
 #pragma warning( disable : 4127 ) // warning C4127: conditional expression is constant
+    if (addr < 0x100 && m_boot_rom_active) {
+        return m_boot_ROM[addr];
+    }
     if (addr < 0x8000) {
         return m_game_pak.ROMAccess<eAccess>(addr, v);
     }
@@ -1579,6 +1601,15 @@ u8 IO::RegAccess(System& rSystem, const u8 addr, const u8 v)
     STD_REG(0x49, rSystem.m_video.OBP1);
     STD_REG(0x4A, rSystem.m_video.WY);
     STD_REG(0x4B, rSystem.m_video.WX);
+    case 0x50:
+        if (eAccess == Access::Write) {
+            if (v & 1) {
+                rSystem.m_boot_rom_active = false;
+            }
+        } else {
+            return 0;
+        }
+        break;
     }
 
     return 0;
@@ -1637,7 +1668,7 @@ void CPU::Execute(System& rSystem)
     }
 }
 
-void IO::Reset()
+void IO::Reset(ResetOption)
 {
     Divider.value = 0;
     TIMA = 0;
@@ -1703,7 +1734,7 @@ void IO::SetTAC(u8 val)
     }
 }
 
-void Video::Reset()
+void Video::Reset(ResetOption)
 {
     m_upFront_buf.reset(new FrameBuf);
     m_upBack_buf.reset(new FrameBuf);
@@ -1994,12 +2025,13 @@ void Video::RenderLine()
     }
 }
 
-void System::Reset()
+void System::Reset(ResetOption reset_opt)
 {
-    m_cpu.Reset();
-    m_video.Reset();
-    m_io.Reset();
-    m_audio.Reset();
+    m_boot_rom_active = (reset_opt & ResetOption_USE_BOOT_ROM) != 0;
+    m_cpu.Reset(reset_opt);
+    m_video.Reset(reset_opt);
+    m_io.Reset(reset_opt);
+    m_audio.Reset(reset_opt);
     m_frame_number = 0;
     m_cycle_count = 0;
     m_new_frame = false;
@@ -2028,7 +2060,7 @@ nanoseconds System::RunTime(const nanoseconds& time_to_run)
     return nanoseconds((m_cycle_count - start_cycle_count) * 1000000000LL / (1024LL * 1024LL));
 }
 
-void Audio::Reset()
+void Audio::Reset(ResetOption reset_opt)
 {
     m_sq1.Reset(*this);
     m_sq2.Reset(*this);
@@ -2036,30 +2068,33 @@ void Audio::Reset()
     m_noise.Reset(*this);
 
     // Boot rom state
-    RegAccess<Access::Write>(0x26, 0x80);
-    RegAccess<Access::Write>(0x10, 0x80);
-    RegAccess<Access::Write>(0x11, 0xBF);
-    RegAccess<Access::Write>(0x12, 0xF3);
-    RegAccess<Access::Write>(0x14, 0xBF);
-    RegAccess<Access::Write>(0x16, 0x3F);
-    RegAccess<Access::Write>(0x17, 0x00);
-    RegAccess<Access::Write>(0x19, 0xBF);
-    RegAccess<Access::Write>(0x1A, 0x7F);
-    RegAccess<Access::Write>(0x1B, 0xFF);
-    RegAccess<Access::Write>(0x1C, 0x9F);
-    RegAccess<Access::Write>(0x1E, 0xBF);
-    RegAccess<Access::Write>(0x20, 0xFF);
-    RegAccess<Access::Write>(0x21, 0x00);
-    RegAccess<Access::Write>(0x22, 0x00);
-    RegAccess<Access::Write>(0x23, 0xBF);
-    RegAccess<Access::Write>(0x24, 0x77);
-    RegAccess<Access::Write>(0x25, 0xF3);
+    if ((reset_opt & ResetOption_USE_BOOT_ROM) == 0)
+    {
+        RegAccess<Access::Write>(0x26, 0x80);
+        RegAccess<Access::Write>(0x10, 0x80);
+        RegAccess<Access::Write>(0x11, 0xBF);
+        RegAccess<Access::Write>(0x12, 0xF3);
+        RegAccess<Access::Write>(0x14, 0xBF);
+        RegAccess<Access::Write>(0x16, 0x3F);
+        RegAccess<Access::Write>(0x17, 0x00);
+        RegAccess<Access::Write>(0x19, 0xBF);
+        RegAccess<Access::Write>(0x1A, 0x7F);
+        RegAccess<Access::Write>(0x1B, 0xFF);
+        RegAccess<Access::Write>(0x1C, 0x9F);
+        RegAccess<Access::Write>(0x1E, 0xBF);
+        RegAccess<Access::Write>(0x20, 0xFF);
+        RegAccess<Access::Write>(0x21, 0x00);
+        RegAccess<Access::Write>(0x22, 0x00);
+        RegAccess<Access::Write>(0x23, 0xBF);
+        RegAccess<Access::Write>(0x24, 0x77);
+        RegAccess<Access::Write>(0x25, 0xF3);
 
-    // Disable boot up sound
-    m_sq1.m_active = false;
-    m_sq2.m_active = false;
-    m_wave.m_active = false;
-    m_noise.m_active = false;
+        // Disable boot up sound
+        m_sq1.m_active = false;
+        m_sq2.m_active = false;
+        m_wave.m_active = false;
+        m_noise.m_active = false;
+    }
 
     m_left = 0;
     m_right = 0;

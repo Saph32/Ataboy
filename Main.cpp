@@ -103,8 +103,7 @@ Action PollEvents()
         break;
     }
 
-    if (eAction == Action::KeyUpdate)
-    {
+    if (eAction == Action::KeyUpdate) {
         if (prev_keys.value == g_keys.value) {
             eAction = Action::None;
         }
@@ -122,10 +121,20 @@ struct AudioContext
     size_t prev_pos = 0;
 };
 
+enum ReturnCode : int {
+    ReturnCode_OK                   = 0,
+    ReturnCode_INVALID_ROM_FILE     = 1,
+    ReturnCode_INVALID_SAVE_FILE    = 2,
+    ReturnCode_INVALID_BOOT_ROM     = 3,
+    ReturnCode_SDL_WINDOW_ERROR     = 4,
+    ReturnCode_SDL_RENDERER_ERROR   = 5,
+    ReturnCode_SDL_TEXTURE_ERROR    = 6,
+    ReturnCode_SDL_AUDIO_ERROR    = 7,
+};
+
 void SDLAudioCallback(void* userdata, Uint8* stream, int len)
 {
-    if (len <= 0)
-    {
+    if (len <= 0) {
         return;
     }
 
@@ -140,8 +149,7 @@ void SDLAudioCallback(void* userdata, Uint8* stream, int len)
     const size_t nb_samples_needed = (size_t)len / sizeof(GB::AudioSample);
     const size_t nb_samples_have = pos - pContext->prev_pos;
 
-    if (nb_samples_have < nb_samples_needed)
-    {
+    if (nb_samples_have < nb_samples_needed) {
         // Fill with silence
         memset(stream, 0, (size_t)len);
         return;
@@ -151,13 +159,10 @@ void SDLAudioCallback(void* userdata, Uint8* stream, int len)
     const size_t buf_pos = read_pos % pContext->buf_size;
     const size_t buf_prev_pos = pContext->prev_pos % pContext->buf_size;
 
-    if (buf_pos > buf_prev_pos)
-    {
+    if (buf_pos > buf_prev_pos) {
         // No wrap around
         memcpy(stream, reinterpret_cast<const Uint8*>(&pContext->pBuf[buf_prev_pos]), (size_t)len);
-    }
-    else
-    {
+    } else {
         const size_t till_end = pContext->buf_size - buf_prev_pos;
         const size_t till_end_bytes = till_end * sizeof(GB::AudioSample);
         memcpy(stream, reinterpret_cast<const Uint8*>(&pContext->pBuf[buf_prev_pos]), till_end_bytes);
@@ -179,9 +184,11 @@ int main(int argc, char* argv[])
 
     int run_frame_count = 0;
 
+    //const char* boot_rom_file_name = R"(D:\emu\gb\DMG_ROM.bin)";
+    const char* boot_rom_file_name = nullptr;
+
     const char* file_name = nullptr;
-    if (argc > 1)
-    {
+    if (argc > 1) {
         file_name = argv[1];
     }
     //file_name = R"(D:\emu\gb\PD\Dan Laser Demo (PD).gb)";
@@ -278,42 +285,46 @@ int main(int argc, char* argv[])
 
     const vector<char> buffer = LoadFile(file_name);
 
-    if (buffer.empty())
-    {
-        return 1;
+    if (buffer.empty()) {
+        return ReturnCode_INVALID_ROM_FILE;
     }
 
     GB::GB gb;
 
     g_keys.value = 0xFF;
 
-    if (!gb.Load(buffer.data(), buffer.size()))
-    {
-        return 1;
+    if (!gb.Load(buffer.data(), buffer.size())) {
+        return ReturnCode_INVALID_ROM_FILE;
+    }
+
+    if (boot_rom_file_name) {
+        const vector<char> boot_rom = LoadFile(boot_rom_file_name);
+
+        if (boot_rom.size() != 256) {
+            return ReturnCode_INVALID_BOOT_ROM;
+        }
+
+        gb.LoadBootROM(boot_rom.data(), boot_rom.size());
     }
 
     const GB::ROM_Header& rHeader = gb.RefHeader();
 
-    gb.Reset();
+    gb.Reset(boot_rom_file_name ? GB::ResetOption_USE_BOOT_ROM : GB::ResetOption_NONE);
 
     string save_filename;
-    if (rHeader.RAM_size > 0)
-    {
+    if (rHeader.RAM_size > 0) {
         // Load save RAM file
         save_filename = GetSaveFileName(file_name);
 
-        if (!save_filename.empty())
-        {
+        if (!save_filename.empty()) {
             printf("Loading save file %s...\n", save_filename.c_str());
 
             vector<char> save_buf = LoadSaveFile(save_filename.c_str(), rHeader.RAM_size);
 
-            if (!save_buf.empty())
-            {
-                if (!gb.LoadSaveRAM(save_buf.data(), save_buf.size()))
-                {
+            if (!save_buf.empty()) {
+                if (!gb.LoadSaveRAM(save_buf.data(), save_buf.size())) {
                     printf("ERROR:Failed to load save file\n");
-                    return 7;
+                    return ReturnCode_INVALID_SAVE_FILE;
                 }
             }
         }
@@ -332,33 +343,29 @@ int main(int argc, char* argv[])
     SDL_AudioDeviceID audio_dev = 0;
     SDL_GameController* controller = nullptr;
 
-    if (use_SDL)
-    {
+    if (use_SDL) {
         SDL_Init(SDL_INIT_EVERYTHING);
 
         pWindow = SDL_CreateWindow("Ataboy", 
             SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 
             160 * zoom, 144 * zoom, SDL_WINDOW_SHOWN);
 
-        if (!pWindow)
-        {
+        if (!pWindow) {
             printf("Can't initialize SDL window\n");
-            return 3;
+            return ReturnCode_SDL_WINDOW_ERROR;
         }
 
         Uint32 renderer_flags = 0;
 
-        if (use_vsync)
-        {
+        if (use_vsync) {
             renderer_flags |= SDL_RENDERER_PRESENTVSYNC;
         }
 
         pRenderer = SDL_CreateRenderer(pWindow, -1, renderer_flags);
 
-        if (!pRenderer)
-        {
+        if (!pRenderer) {
             printf("Can't initialize SDL renderer\n");
-            return 4;
+            return ReturnCode_SDL_RENDERER_ERROR;
         }
 
         SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "nearest");
@@ -368,10 +375,9 @@ int main(int argc, char* argv[])
             SDL_TEXTUREACCESS_STREAMING,
             160, 144);
 
-        if (!pTexture)
-        {
+        if (!pTexture) {
             printf("Can't initialize SDL texture\n");
-            return 5;
+            return ReturnCode_SDL_TEXTURE_ERROR;
         }
 
         SDL_AudioSpec audio_want = {};
@@ -386,10 +392,9 @@ int main(int argc, char* argv[])
 
         audio_dev = SDL_OpenAudioDevice(nullptr, 0, &audio_want, &audio_have, 0);
     
-        if (!audio_dev)
-        {
+        if (!audio_dev) {
             printf("Can't initialize SDL audio\n");
-            return 6;
+            return ReturnCode_SDL_AUDIO_ERROR;
         }
 
         for (int i = 0; i < SDL_NumJoysticks(); ++i) {
@@ -408,8 +413,7 @@ int main(int argc, char* argv[])
     auto start_time = high_resolution_clock::now();
     int nb_frames = 0;
 
-    if (use_SDL)
-    {
+    if (use_SDL) {
         SDL_PauseAudioDevice(audio_dev, 0);
     }
 
@@ -418,17 +422,13 @@ int main(int argc, char* argv[])
     auto pause_time = nanoseconds(0);
 
     bool bQuit = false;
-    while(!bQuit)
-    {
-        if (use_SDL)
-        {
+    while(!bQuit) {
+        if (use_SDL) {
             Action eAction = Action::None;
-            do
-            {
+            do {
                 eAction = PollEvents();
 
-                if (eAction == Action::JoyUpdate && controller)
-                {
+                if (eAction == Action::JoyUpdate && controller) {
                     auto prev_keys = g_keys;
 #define CHECK_BUTTON(x, y) if (SDL_GameControllerGetButton(controller, x)) { y = 0; } else { y = 1;}
                     CHECK_BUTTON(SDL_CONTROLLER_BUTTON_DPAD_LEFT, g_keys.k.left);
@@ -454,19 +454,15 @@ int main(int argc, char* argv[])
                         g_keys.k.down = 0;
                     }
 
-                    if (prev_keys.value != g_keys.value)
-                    {
+                    if (prev_keys.value != g_keys.value) {
                         eAction = Action::KeyUpdate;
                     }
                 }
 
-                if (eAction == Action::Quit)
-                {
+                if (eAction == Action::Quit) {
                     bQuit = true;
                     break;
-                }
-                else if (eAction == Action::KeyUpdate)
-                {
+                } else if (eAction == Action::KeyUpdate) {
                     gb.UpdateKeys(g_keys);
                 }
 
@@ -480,8 +476,7 @@ int main(int argc, char* argv[])
 
         }
 
-        if (bQuit)
-        {
+        if (bQuit) {
             break;
         }
 
@@ -499,8 +494,7 @@ int main(int argc, char* argv[])
             if (use_SDL || save_screenshot) {
                 const auto pPix = gb.GetPixels();
 
-                if (use_SDL)
-                {
+                if (use_SDL) {
                     SDL_UpdateTexture(pTexture, nullptr, pPix, sizeof(pPix[0]) * 160);
 
                     SDL_RenderClear(pRenderer);
@@ -508,31 +502,25 @@ int main(int argc, char* argv[])
                     SDL_RenderPresent(pRenderer);
                 }
 
-                if (save_screenshot)
-                {
+                if (save_screenshot) {
                     string image_name = GetScreenShotFileName(file_name);
 
-                    if (!image_name.empty())
-                    {
+                    if (!image_name.empty()) {
                         SaveImage(image_name.c_str(), pPix);
                     }
                 }
             }
         }
 
-        if (speed_factor == 0)
-        {
+        if (speed_factor == 0) {
             gb.RunTime(nanoseconds(16666667));
-        }
-        else
-        {
+        } else {
             const auto time_now = high_resolution_clock::now();
 
             auto elapsed = time_now - run_time - pause_time;
 
             constexpr auto MAX_SKIP_TIME = milliseconds(50);
-            if (elapsed > MAX_SKIP_TIME)
-            {
+            if (elapsed > MAX_SKIP_TIME) {
                 pause_time += elapsed - MAX_SKIP_TIME;
                 elapsed = MAX_SKIP_TIME;
             }
@@ -541,8 +529,7 @@ int main(int argc, char* argv[])
 
             run_time += emu_elapsed / speed_factor;
 
-            if (start_time + seconds(1) < time_now)
-            {
+            if (start_time + seconds(1) < time_now) {
                 const duration<float> fsec = time_now - start_time;
                 const float fps = 1.0f * nb_frames / fsec.count();
                 printf("FPS:%.2f (%.0f%%)\r", fps, fps / 60 * 100);
@@ -553,24 +540,21 @@ int main(int argc, char* argv[])
             this_thread::sleep_for(milliseconds(1));
         }
 
-        if (frame_count_exceeded)
-        {
+        if (frame_count_exceeded) {
             break;
         }
     }
 
-    if (!save_filename.empty())
-    {
+    if (!save_filename.empty()) {
         const auto save_RAM_info = gb.RefSaveRAM();
         SaveSaveFile(save_filename.c_str(), save_RAM_info.first, save_RAM_info.second);
     }
 
-    if (use_SDL)
-    {
+    if (use_SDL) {
         SDL_PauseAudioDevice(audio_dev, 1);
         SDL_AudioQuit();
         SDL_Quit();
     }
 
-    return 0;
+    return ReturnCode_OK;
 }

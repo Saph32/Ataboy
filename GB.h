@@ -67,6 +67,12 @@ struct AudioSample
     i16 right;
 };
 
+enum ResetOption
+{
+    ResetOption_NONE            = 0x00,
+    ResetOption_USE_BOOT_ROM    = 0x01,
+};
+
 class GB
 {
 public:
@@ -76,8 +82,9 @@ public:
 
     bool Load(const char* pROM_data, size_t size);
     bool LoadSaveRAM(const char* pRAM_data, size_t size);
+    bool LoadBootROM(const char* pROM_data, size_t size);
 
-    void Reset();
+    void Reset(ResetOption reset_opt);
 
     void RunFrame();
     std::chrono::nanoseconds RunTime(const std::chrono::nanoseconds& time_to_run);
