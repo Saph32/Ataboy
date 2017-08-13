@@ -556,6 +556,8 @@ bool GB::LoadBootROM(const char * pROM_data, size_t size)
     }
 
     memcpy(m_pSystem->m_boot_ROM.data(), pROM_data, m_pSystem->m_boot_ROM.size());
+
+    return true;
 }
 
 void GB::Reset(ResetOption reset_opt)
@@ -618,22 +620,29 @@ void CPU::Reset(ResetOption reset_opt)
 {
     if (reset_opt & ResetOption_USE_BOOT_ROM)
     {
-        R.PC = 0x000;
+        R.PC = 0;
+        R.SP = 0;
+        R.af8.A = 0;
+        R.af8.FLAGS = 0;
+        R.F.Z = 0; R.F.N = 0; R.F.C = 0; R.F.H = 0;
+        R.BC = 0;
+        R.DE = 0;
+        R.HL = 0;
+        IF.value = 0xE1;
     }
     else
     {
         R.PC = 0x100;
+        R.SP = 0xFFFE;
+        R.af8.A = 0x01;
+        R.af8.FLAGS = 0xB0;
+        R.F.Z = 1; R.F.N = 0; R.F.C = 1; R.F.H = 1;
+        R.BC = 0x0013;
+        R.DE = 0x00d8;
+        R.HL = 0x014d;
+        IF.value = 0;
     }
-    R.SP = 0xFFFE;
-    R.af8.A = 0x01;
-    R.af8.FLAGS = 0xB0;
-    R.F.Z = 1; R.F.N = 0; R.F.C = 1; R.F.H = 1;
-    R.BC = 0x0013;
-    R.DE = 0x00d8;
-    R.HL = 0x014d;
 
-    IF.value = 0;
-    
     fill(begin(HRAM), end(HRAM), u8(0));
 
     //bQuit = false;
@@ -989,6 +998,12 @@ void CPU::LDSPOF(System& rSystem)
     R.F.Z = 0;
     R.F.N = 0;
     rSystem.Tick();
+#pragma warning( push )
+#pragma warning( disable : 4127 )   // warning C4127: conditional expression is constant
+    if (dst == OpSP) {
+        rSystem.Tick();
+    }
+#pragma warning( pop )
 }
 
 void CPU::HALT(System&) {
@@ -1037,7 +1052,6 @@ void CPU::CALL(System& rSystem)
     if (Condition<con>()) {
         PUSH16(rSystem, R.PC);
         R.PC = t;
-        rSystem.Tick(); 
     }
 }
 
@@ -1045,7 +1059,6 @@ template<u8 addr>
 void CPU::RST(System& rSystem) {
     R.PC++; PUSH16(rSystem, R.PC);
     R.PC = addr;
-    rSystem.Tick();
 }
 
 template<CPU::CondFlag con>
@@ -1056,6 +1069,9 @@ void CPU::RET(System& rSystem) {
     rSystem.Tick();
     if (Condition<con>()) {
         R.PC = POP16(rSystem);
+        if (con != Always && con != RETI) {
+            rSystem.Tick();
+        }
     }
     else {
         R.PC++;
@@ -1174,6 +1190,7 @@ void CPU::PUSH16(System& rSystem, const u16 v) {
     WB(rSystem, R.SP, t.hl8.H);
     R.SP--;
     WB(rSystem, R.SP, t.hl8.L);
+    rSystem.Tick();
 }
 
 u16 CPU::POP16(System& rSystem) {
@@ -1673,7 +1690,7 @@ void IO::Reset(ResetOption)
     Divider.value = 0;
     TIMA = 0;
     TMA = 0;
-    TAC = 0;
+    TAC = 0xF8;
     m_timer_mask = 255;
     P1 = 0x0f;
     m_keys.value = 0xff;
@@ -1734,16 +1751,22 @@ void IO::SetTAC(u8 val)
     }
 }
 
-void Video::Reset(ResetOption)
+void Video::Reset(ResetOption reset_opt)
 {
     m_upFront_buf.reset(new FrameBuf);
     m_upBack_buf.reset(new FrameBuf);
 
+    if (reset_opt & ResetOption_USE_BOOT_ROM) {
+        LCDC.value = 0;
+        m_mode = 0;
+    } else {
+        LCDC.value = 0x91;
+        m_mode = 2;
+    }
+
     STAT.value = 0x84;
-    m_mode = 2;
     LCDX = 0;
 
-    LCDC.value = 0x91;
     LY = 0;
     SCX = 0;
     SCY = 0;
