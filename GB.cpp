@@ -1659,7 +1659,6 @@ void CPU::Execute(System& rSystem)
     if (m_ei_delay) {
         m_ei_delay = false;
     } else if (IF.value & IE.value & 0x1f) {
-        m_halt = false;
         if (IME) {
             u16 ivector = 0x40;
             if (IF.f.joypad & IE.f.joypad){
@@ -1681,6 +1680,13 @@ void CPU::Execute(System& rSystem)
             IME = false;
             PUSH16(rSystem, R.PC);
             R.PC = ivector;
+            m_halt = false;
+        } else if (m_halt) {
+            // HALT bug
+            const u8 opcode = RB(rSystem, R.PC);
+            --R.PC; // HALT bug executes an instruction wihtout increasing PC
+            (this->*m_op_codes[opcode])(rSystem);
+            m_halt = false;
         }
     }
 }

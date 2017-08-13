@@ -254,8 +254,7 @@ int main(int argc, char* argv[])
     //file_name = R"(D:\emu\gb\Game & Watch Gallery 3 (USA, Europe) (SGB Enhanced).gbc)";
     //file_name = R"(D:\emu\gb\NBA 3 on 3 featuring Kobe Bryant (USA) (SGB Enhanced).gbc)";
     //file_name = R"(D:\emu\gb\Godzilla - The Series (USA) (En,Fr,De).gbc)";
-
-
+    //file_name = R"(D:\emu\gb\Smurfs, The (Europe) (En,Fr,De,Es).gb)";
 
 
     //file_name = R"(D:\emu\gb\Tests\cpu_instrs\cpu_instrs.gb)";
@@ -280,6 +279,7 @@ int main(int argc, char* argv[])
     //file_name = R"(D:\emu\gb\Tests\mem_timing\mem_timing.gb)";
     //file_name = R"(D:\emu\gb\Tests\mem_timing-2\mem_timing.gb)";
     //file_name = R"(D:\emu\gb\Tests\interrupt_time\interrupt_time.gb)";
+    //file_name = R"(D:\emu\gb\Tests\halt_bug.gb)";
 
     //file_name = R"()";
 
