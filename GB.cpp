@@ -1599,11 +1599,10 @@ u8 IO::RegAccess(System& rSystem, const u8 addr, const u8 v)
     STD_REG(0x42, rSystem.m_video.SCY);
     STD_REG(0x43, rSystem.m_video.SCX);
     case 0x44 : 
-        if (eAccess == Access::Write) {
-            rSystem.m_video.LY = 0;
-        } else {
+        if (eAccess == Access::Read) {
             return rSystem.m_video.LY;
         }
+        // Writes are ignored
         break;
     STD_REG(0x45, rSystem.m_video.LYC);
     case 0x46 : 
