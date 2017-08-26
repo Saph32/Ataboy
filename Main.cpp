@@ -177,12 +177,12 @@ int main(int argc, char* argv[])
     (void)argc;
     (void)argv;
 
-    bool use_SDL = false;
-    bool use_vsync = false;
-    bool save_screenshot_on_exit = true;
+    bool use_SDL = true;
+    bool use_vsync = true;
+    bool save_screenshot_on_exit = false;
     int speed_factor = 0;   // 0 = unlimited
 
-    int run_frame_count = 360;
+    int run_frame_count = 0;
 
     //const char* boot_rom_file_name = R"(D:\emu\gb\DMG_ROM.bin)";
     const char* boot_rom_file_name = nullptr;
