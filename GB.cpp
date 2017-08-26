@@ -60,8 +60,40 @@ class CPU
 {
 public:
 
-    enum Operand8 { OpA, OpB, OpC, OpD, OpE, OpH, OpL, OpIHL, OpImm, OpIBC, OpIDE, OpIoImm, OpIoC, OpHLI, OpHLD, OpIImm };
-    enum Operand16 { OpBC, OpDE, OpHL, OpSP, OpAF, OpImm16 };
+    enum class Op8 { A, B, C, D, E, H, L, IHL, Imm, IBC, IDE, IoImm, IoC, HLI, HLD, IImm };
+    struct Op8Type {};
+
+#define DEFINE_OP8_TYPE(x) struct Op ## x : public Op8Type {static constexpr auto op8 = Op8::x;};
+
+    DEFINE_OP8_TYPE(A);
+    DEFINE_OP8_TYPE(B);
+    DEFINE_OP8_TYPE(C);
+    DEFINE_OP8_TYPE(D);
+    DEFINE_OP8_TYPE(E);
+    DEFINE_OP8_TYPE(H);
+    DEFINE_OP8_TYPE(L);
+    DEFINE_OP8_TYPE(IHL);
+    DEFINE_OP8_TYPE(Imm);
+    DEFINE_OP8_TYPE(IBC);
+    DEFINE_OP8_TYPE(IDE);
+    DEFINE_OP8_TYPE(IoImm);
+    DEFINE_OP8_TYPE(IoC);
+    DEFINE_OP8_TYPE(HLI);
+    DEFINE_OP8_TYPE(HLD);
+    DEFINE_OP8_TYPE(IImm);
+
+    enum class Op16 { BC, DE, HL, SP, AF, Imm16 };
+    struct Op16Type {};
+
+#define DEFINE_OP16_TYPE(x) struct Op ## x : public Op16Type {static constexpr auto op16 = Op16::x;};
+
+    DEFINE_OP16_TYPE(BC);
+    DEFINE_OP16_TYPE(DE);
+    DEFINE_OP16_TYPE(HL);
+    DEFINE_OP16_TYPE(SP);
+    DEFINE_OP16_TYPE(AF);
+    DEFINE_OP16_TYPE(Imm16);
+
     enum OpALU { ADD, ADC, SUB, SBC, CP };
     enum OpBITW { AND, OR, XOR };
     enum OpBITS { RL, RLA, RLC, RLCA, RR, RRA, RRC, RRCA, SLA, SRA, SRL, SWP };
@@ -119,35 +151,35 @@ public:
     u8   RB(System& rSystem, const u16 addr);
     void WB(System& rSystem, const u16 addr, const u8 v);
 
-    template<Operand8 op8> u8 GetOperand8(System& rSystem);
-    template<Operand8 op8> void SetOperand8(System& rSystem,const u8 v);
-    template<Operand16 op16> u16 GetOperand16(System& rSystem);
-    template<Operand16 op16> void SetOperand16(const u16 v);
+    template<class Op8T> u8 GetOperand8(System& rSystem);
+    template<class Op8T> void SetOperand8(System& rSystem,const u8 v);
+    template<class Op16T> u16 GetOperand16(System& rSystem);
+    template<class Op16T> void SetOperand16(const u16 v);
 
     void NOP(System& rSystem);
-    template<Operand8 src> void INC(System& rSystem);
-    template<Operand16 src> void INC16(System& rSystem);
-    template<Operand16 src> void DEC16(System& rSystem);
-    template<Operand8 src> void DEC(System& rSystem);
-    template<Operand8 src, OpALU alu> void ALU(System& rSystem);
-    template<Operand16 src> void ADDHL(System& rSystem);
-    template<Operand8 src, OpBITW op> void BITW(System& rSystem);
-    template<Operand8 src, OpBITS op> void BITS(System& rSystem);
-    template<Operand8 src, u8 bit> void SET(System& rSystem);
-    template<Operand8 src, u8 bit> void RES(System& rSystem);
-    template<Operand8 src, u8 bit> void BIT(System& rSystem);
-    template<Operand8 src, Operand8 dst> void LD(System& rSystem);
-    template<Operand16 dst> void LD16(System& rSystem);
+    template<class Op8T> void INC(System& rSystem);
+    template<class Op16T> void INC16(System& rSystem);
+    template<class Op16T> void DEC16(System& rSystem);
+    template<class Op8T> void DEC(System& rSystem);
+    template<class Op8T, OpALU alu> void ALU(System& rSystem);
+    template<class Op16T> void ADDHL(System& rSystem);
+    template<class Op8T, OpBITW op> void BITW(System& rSystem);
+    template<class Op8T, OpBITS op> void BITS(System& rSystem);
+    template<class Op8T, u8 bit> void SET(System& rSystem);
+    template<class Op8T, u8 bit> void RES(System& rSystem);
+    template<class Op8T, u8 bit> void BIT(System& rSystem);
+    template<class Op8SrcT, class Op8DstT> void LD(System& rSystem);
+    template<class Op16DstT> void LD16(System& rSystem);
     void LDSP(System& rSystem);
     void LDSPHL(System& rSystem);
-    template<Operand16 dst> void LDSPOF(System& rSystem);
+    template<class Op16T> void LDSPOF(System& rSystem);
     void HALT(System& rSystem);
     void STOP(System& rSystem);
     void CB(System& rSystem);
     void SCF(System& rSystem);
     void CCF(System& rSystem);
-    template<Operand16 src> void PUSH(System& rSystem);
-    template<Operand16 dst> void POP(System& rSystem);
+    template<class Op16T> void PUSH(System& rSystem);
+    template<class Op16T> void POP(System& rSystem);
     template<CondFlag con> void CALL(System& rSystem);
     template<u8 addr> void RST(System& rSystem);
     template<CondFlag con> void RET(System& rSystem);
@@ -707,134 +739,104 @@ u8 System::BusAccess(u16 addr, u8 v) {
 #pragma warning( pop )
 }
 
-template<CPU::Operand8 op8>
-u8 CPU::GetOperand8(System& rSystem)
-{
-    u8  t = 0;
-    u16 t16 = 0;
-    switch (op8) {
-    case OpA: return R.af8.A;
-    case OpB: return R.bc8.B;
-    case OpC: return R.bc8.C;
-    case OpD: return R.de8.D;
-    case OpE: return R.de8.E;
-    case OpH: return R.hl8.H;
-    case OpL: return R.hl8.L;
-    case OpIHL: return RB(rSystem, R.HL);
-    case OpIBC: return RB(rSystem, R.BC);
-    case OpIDE: return RB(rSystem, R.DE);
-    case OpImm: R.PC++; return RB(rSystem, R.PC);
-    case OpIoImm: R.PC++; t = RB(rSystem, R.PC); return RB(rSystem, 0xff00 | t);
-    case OpIoC: return RB(rSystem, 0xff00 | R.bc8.C);
-    case OpHLI: t = RB(rSystem, R.HL); R.HL++; return t;
-    case OpHLD: t = RB(rSystem, R.HL); R.HL--; return t;
-    case OpIImm: t16 = GetOperand16<OpImm16>(rSystem); return RB(rSystem, t16);
-    }
-    return 0;
+template<> u16 CPU::GetOperand16<CPU::OpBC>(System&) {return R.BC;}
+template<> u16 CPU::GetOperand16<CPU::OpDE>(System&) {return R.DE;}
+template<> u16 CPU::GetOperand16<CPU::OpHL>(System&) {return R.HL;}
+template<> u16 CPU::GetOperand16<CPU::OpSP>(System&) {return R.SP;}
+template<> u16 CPU::GetOperand16<CPU::OpAF>(System&) {R.af8.FLAGS = (R.F.Z << 7) | (R.F.N << 6) | (R.F.H << 5) | (R.F.C << 4); return R.AF;}
+template<> u16 CPU::GetOperand16<CPU::OpImm16>(System& rSystem) {R.PC++; u16 t = RB(rSystem, R.PC); R.PC++; t = t + ((RB(rSystem, R.PC) << 8)); return t;}
+
+template<> u8 CPU::GetOperand8<CPU::OpA>(System&) {return R.af8.A;}
+template<> u8 CPU::GetOperand8<CPU::OpB>(System&) {return R.bc8.B;}
+template<> u8 CPU::GetOperand8<CPU::OpC>(System&) {return R.bc8.C;}
+template<> u8 CPU::GetOperand8<CPU::OpD>(System&) {return R.de8.D;}
+template<> u8 CPU::GetOperand8<CPU::OpE>(System&) {return R.de8.E;}
+template<> u8 CPU::GetOperand8<CPU::OpH>(System&) {return R.hl8.H;}
+template<> u8 CPU::GetOperand8<CPU::OpL>(System&) {return R.hl8.L;}
+template<> u8 CPU::GetOperand8<CPU::OpIHL>(System& rSystem) {return RB(rSystem, R.HL);}
+template<> u8 CPU::GetOperand8<CPU::OpIBC>(System& rSystem) {return RB(rSystem, R.BC);}
+template<> u8 CPU::GetOperand8<CPU::OpIDE>(System& rSystem) {return RB(rSystem, R.DE);}
+template<> u8 CPU::GetOperand8<CPU::OpImm>(System& rSystem) {R.PC++; return RB(rSystem, R.PC);}
+template<> u8 CPU::GetOperand8<CPU::OpIoImm>(System& rSystem) {R.PC++; const u8 t = RB(rSystem, R.PC); return RB(rSystem, 0xff00 | t);}
+template<> u8 CPU::GetOperand8<CPU::OpIoC>(System& rSystem) {return RB(rSystem, 0xff00 |  R.bc8.C);}
+template<> u8 CPU::GetOperand8<CPU::OpHLI>(System& rSystem) {const u8 t = RB(rSystem, R.HL); R.HL++; return t;}
+template<> u8 CPU::GetOperand8<CPU::OpHLD>(System& rSystem) {const u8 t = RB(rSystem, R.HL); R.HL--; return t;}
+template<> u8 CPU::GetOperand8<CPU::OpIImm>(System& rSystem) {const u16 t = GetOperand16<OpImm16>(rSystem); return RB(rSystem, t);}
+
+template<> void CPU::SetOperand16<CPU::OpBC>(const u16 v) {R.BC = v;}
+template<> void CPU::SetOperand16<CPU::OpDE>(const u16 v) {R.DE = v;}
+template<> void CPU::SetOperand16<CPU::OpHL>(const u16 v) {R.HL = v;}
+template<> void CPU::SetOperand16<CPU::OpSP>(const u16 v) {R.SP = v;}
+template<> void CPU::SetOperand16<CPU::OpAF>(const u16 v) {
+    R.AF = v;
+    R.F.Z = (R.af8.FLAGS & 0x80) ? 1 : 0;
+    R.F.N = (R.af8.FLAGS & 0x40) ? 1 : 0;
+    R.F.H = (R.af8.FLAGS & 0x20) ? 1 : 0;
+    R.F.C = (R.af8.FLAGS & 0x10) ? 1 : 0;
 }
 
-template<CPU::Operand8 op8>
-void CPU::SetOperand8(System& rSystem, const u8 v)
-{
-    u8 t = 0; 
-    u16 t16 = 0;
-    switch (op8) {
-    case OpA: R.af8.A = v; break;
-    case OpB: R.bc8.B = v; break;
-    case OpC: R.bc8.C = v; break;
-    case OpD: R.de8.D = v; break;
-    case OpE: R.de8.E = v; break;
-    case OpH: R.hl8.H = v; break;
-    case OpL: R.hl8.L = v; break;
-    case OpIHL: WB(rSystem, R.HL, v); break;
-    case OpIBC: WB(rSystem, R.BC, v); break;
-    case OpIDE: WB(rSystem, R.DE, v); break;
-    case OpIoImm: R.PC++; t = RB(rSystem, R.PC); WB(rSystem, 0xff00 | t, v); break;
-    case OpIoC: WB(rSystem, 0xff00 | R.bc8.C, v); break;
-    case OpHLI: WB(rSystem, R.HL, v); R.HL++; break;
-    case OpHLD: WB(rSystem, R.HL, v); R.HL--; break;
-    case OpIImm: t16 = GetOperand16<OpImm16>(rSystem); WB(rSystem, t16, v); break;
-    }
-}
-
-template<CPU::Operand16 op16>
-u16 CPU::GetOperand16(System& rSystem)
-{
-    u16 t;
-    switch (op16) {
-    case OpBC: return R.BC;
-    case OpDE: return R.DE;
-    case OpHL: return R.HL;
-    case OpSP: return R.SP;
-    case OpAF: R.af8.FLAGS = (R.F.Z << 7) | (R.F.N << 6) | (R.F.H << 5) | (R.F.C << 4); return R.AF;
-    case OpImm16: R.PC++; t = RB(rSystem, R.PC); R.PC++; t = t + ((RB(rSystem, R.PC) << 8)); return t;
-    }
-    return 0;
-}
-
-template<CPU::Operand16 op16>
-void CPU::SetOperand16(const u16 v)
-{
-    switch (op16) {
-    case OpBC: R.BC = v; break;
-    case OpDE: R.DE = v; break;
-    case OpHL: R.HL = v; break;
-    case OpSP: R.SP = v; break;
-    case OpAF: R.AF = v;
-        R.F.Z = (R.af8.FLAGS & 0x80) ? 1 : 0;
-        R.F.N = (R.af8.FLAGS & 0x40) ? 1 : 0;
-        R.F.H = (R.af8.FLAGS & 0x20) ? 1 : 0;
-        R.F.C = (R.af8.FLAGS & 0x10) ? 1 : 0;
-        break;
-    }
-}
+template<> void CPU::SetOperand8<CPU::OpA>(System&, const u8 v) {R.af8.A = v;}
+template<> void CPU::SetOperand8<CPU::OpB>(System&, const u8 v) {R.bc8.B = v;}
+template<> void CPU::SetOperand8<CPU::OpC>(System&, const u8 v) {R.bc8.C = v;}
+template<> void CPU::SetOperand8<CPU::OpD>(System&, const u8 v) {R.de8.D = v;}
+template<> void CPU::SetOperand8<CPU::OpE>(System&, const u8 v) {R.de8.E = v;}
+template<> void CPU::SetOperand8<CPU::OpH>(System&, const u8 v) {R.hl8.H = v;}
+template<> void CPU::SetOperand8<CPU::OpL>(System&, const u8 v) {R.hl8.L = v;}
+template<> void CPU::SetOperand8<CPU::OpIHL>(System& rSystem, const u8 v) {WB(rSystem, R.HL, v);}
+template<> void CPU::SetOperand8<CPU::OpIBC>(System& rSystem, const u8 v) {WB(rSystem, R.BC, v);}
+template<> void CPU::SetOperand8<CPU::OpIDE>(System& rSystem, const u8 v) {WB(rSystem, R.DE, v);}
+template<> void CPU::SetOperand8<CPU::OpIoImm>(System& rSystem, const u8 v) {R.PC++; const u8 t = RB(rSystem, R.PC); WB(rSystem, 0xff00 | t, v);}
+template<> void CPU::SetOperand8<CPU::OpIoC>(System& rSystem, const u8 v) {WB(rSystem, 0xff00 |  R.bc8.C, v);}
+template<> void CPU::SetOperand8<CPU::OpHLI>(System& rSystem, const u8 v) {WB(rSystem, R.HL, v); R.HL++;}
+template<> void CPU::SetOperand8<CPU::OpHLD>(System& rSystem, const u8 v) {WB(rSystem, R.HL, v); R.HL--;}
+template<> void CPU::SetOperand8<CPU::OpIImm>(System& rSystem, const u8 v) {const u16 t = GetOperand16<OpImm16>(rSystem); WB(rSystem, t, v);}
 
 void CPU::NOP(System&) {
     R.PC++; 
 }
 
-template<CPU::Operand8 src>
+template<class TOp8>
 void CPU::INC(System& rSystem) {
-    u8 t = GetOperand8<src>(rSystem);
+    u8 t = GetOperand8<TOp8>(rSystem);
     R.F.H = ((t & 0xf) == 0xf) ? 1 : 0;
     t = (t + 1) & 0xff;
-    SetOperand8<src>(rSystem, t);
+    SetOperand8<TOp8>(rSystem, t);
     R.F.N = 0;
     R.F.Z = (t == 0) ? 1 : 0;
     R.PC++;
 }
 
-template<CPU::Operand16 src>
+template<class TOp16>
 void CPU::INC16(System& rSystem) {
-    u16 t = GetOperand16<src>(rSystem);
+    u16 t = GetOperand16<TOp16>(rSystem);
     t = t + 1;
-    SetOperand16<src>(t);
+    SetOperand16<TOp16>(t);
     R.PC++;
     rSystem.Tick();
 }
 
-template<CPU::Operand16 src>
+template<class TOp16>
 void CPU::DEC16(System& rSystem) {
-    u16 t = GetOperand16<src>(rSystem);
+    u16 t = GetOperand16<TOp16>(rSystem);
     t = t - 1;
-    SetOperand16<src>(t);
+    SetOperand16<TOp16>(t);
     R.PC++; 
     rSystem.Tick();
 }
 
-template<CPU::Operand8 src>
+template<class TOp8>
 void CPU::DEC(System& rSystem)
 {
-    u8 t = GetOperand8<src>(rSystem);
+    u8 t = GetOperand8<TOp8>(rSystem);
     R.F.H = ((t & 0xf) == 0) ? 1 : 0;
     t = (t - 1) & 0xff;
-    SetOperand8<src>(rSystem, t);
+    SetOperand8<TOp8>(rSystem, t);
     R.F.N = 1;
     R.F.Z = (t == 0) ? 1 : 0;
     R.PC++;
 }
 
-template<CPU::Operand8 src, CPU::OpALU alu>
+template<class TOp8, CPU::OpALU alu>
 void CPU::ALU(System& rSystem)
 {
 #pragma warning( push )
@@ -843,7 +845,7 @@ void CPU::ALU(System& rSystem)
 
     const bool carry = (alu == ADC || alu == SBC);
     const bool sub = !(alu == ADD || alu == ADC);
-    size_t t = GetOperand8<src>(rSystem);
+    size_t t = GetOperand8<TOp8>(rSystem);
 
     if (sub) {
         R.F.H = (((R.af8.A & 0xf) - (t & 0xf) - (carry ? R.F.C : 0)) >> 4) & 1;
@@ -863,9 +865,9 @@ void CPU::ALU(System& rSystem)
 #pragma warning( pop )
 }
 
-template<CPU::Operand16 src>
+template<class TOp16>
 void CPU::ADDHL(System& rSystem) {
-    size_t t = GetOperand16<src>(rSystem);
+    size_t t = GetOperand16<TOp16>(rSystem);
     R.F.H = ((R.HL & 0x0fff) + (t & 0x0fff) > 0x0fff) ? 1 : 0;
     t += R.HL;
     R.HL = (t & 0xffff);
@@ -875,9 +877,9 @@ void CPU::ADDHL(System& rSystem) {
     rSystem.Tick();
 }
 
-template<CPU::Operand8 src, CPU::OpBITW op>
+template<class TOp8, CPU::OpBITW op>
 void CPU::BITW(System& rSystem) {
-    u8 t = GetOperand8<src>(rSystem);
+    u8 t = GetOperand8<TOp8>(rSystem);
     switch (op) {
     case AND: R.af8.A &= t; break;
     case OR:  R.af8.A |= t; break;
@@ -890,14 +892,14 @@ void CPU::BITW(System& rSystem) {
     R.PC++;
 }
 
-template<CPU::Operand8 src, CPU::OpBITS op>
+template<class TOp8, CPU::OpBITS op>
 void CPU::BITS(System& rSystem)
 {
 #pragma warning( push )
 #pragma warning( disable : 4127 ) // warning C4127: conditional expression is constant
     const bool z0 = (op == RLA || op == RLCA || op == RRA || op == RRCA);
     // TODO : Test with size_t
-    u8 t = GetOperand8<src>(rSystem);
+    u8 t = GetOperand8<TOp8>(rSystem);
     u8 prevFC = R.F.C;
     if (op == RL || op == RLA || op == RLC || op == RLCA || op == SLA) {
         R.F.C = (t & 0x80) ? 1 : 0;
@@ -926,47 +928,42 @@ void CPU::BITS(System& rSystem)
     R.F.N = 0;
     R.F.H = 0;
     R.F.Z = (!z0 && (t & 0xff) == 0) ? 1 : 0;
-    SetOperand8<src>(rSystem, t);
+    SetOperand8<TOp8>(rSystem, t);
     R.PC++;
 #pragma warning( pop )
 }
 
-template<CPU::Operand8 src, u8 bit>
+template<class TOp8, u8 bit>
 void CPU::SET(System& rSystem) {
-    SetOperand8<src>(rSystem, GetOperand8<src>(rSystem) | (1 << bit));
+    SetOperand8<TOp8>(rSystem, GetOperand8<TOp8>(rSystem) | (1 << bit));
     R.PC++;
 }
 
-template<CPU::Operand8 src, u8 bit>
+template<class TOp8, u8 bit>
 void CPU::RES(System& rSystem) {
-    SetOperand8<src>(rSystem, GetOperand8<src>(rSystem) & (~(1 << bit)));
+    SetOperand8<TOp8>(rSystem, GetOperand8<TOp8>(rSystem) & (~(1 << bit)));
     R.PC++;
 }
 
-template<CPU::Operand8 src, u8 bit>
+template<class TOp8, u8 bit>
 void CPU::BIT(System& rSystem) {
     R.F.N = 0;
     R.F.H = 1;
-    R.F.Z = (GetOperand8<src>(rSystem) & (1 << bit)) ? 0 : 1;
+    R.F.Z = (GetOperand8<TOp8>(rSystem) & (1 << bit)) ? 0 : 1;
     R.PC++;
 }
 
-template<CPU::Operand8 src, CPU::Operand8 dst>
+template<> void CPU::LD<CPU::OpIHL, CPU::Op16>(System& rSystem) {HALT(rSystem);}
+
+template<class TOpSrc8, class TOpDst8>
 void CPU::LD(System& rSystem) {
-#pragma warning( push )
-#pragma warning( disable : 4127 ) // warning C4127: conditional expression is constant
-    if (src == OpIHL && dst == OpIHL) {
-        HALT(rSystem); 
-    } else {
-        SetOperand8<dst>(rSystem, GetOperand8<src>(rSystem));
-        R.PC++;
-    }
-#pragma warning( pop )
+    SetOperand8<TOpDst8>(rSystem, GetOperand8<TOpSrc8>(rSystem));
+    R.PC++;
 }
 
-template<CPU::Operand16 dst>
+template<class TOp16>
 void CPU::LD16(System& rSystem) {
-    SetOperand16<dst>(GetOperand16<OpImm16>(rSystem));
+    SetOperand16<TOp16>(GetOperand16<OpImm16>(rSystem));
     R.PC++; 
 }
 
@@ -984,7 +981,7 @@ void CPU::LDSPHL(System& rSystem) {
     R.PC++; 
 }
 
-template<CPU::Operand16 dst>
+template<class TOp16>
 void CPU::LDSPOF(System& rSystem)
 {
     R.PC++;
@@ -994,13 +991,13 @@ void CPU::LDSPOF(System& rSystem)
     R.F.H = (((R.SP & 0x0f) + (tu & 0x0f)) >> 4) & 1;
     R.F.C = (((size_t)(R.SP & 0xff) + tu) >> 8) & 1;
     const u16 t16 = R.SP + t;
-    SetOperand16<dst>(t16);
+    SetOperand16<TOp16>(t16);
     R.F.Z = 0;
     R.F.N = 0;
     rSystem.Tick();
 #pragma warning( push )
 #pragma warning( disable : 4127 )   // warning C4127: conditional expression is constant
-    if (dst == OpSP) {
+    if (TOp16::op16 == Op16::SP) {
         rSystem.Tick();
     }
 #pragma warning( pop )
@@ -1032,15 +1029,15 @@ void CPU::CCF(System&) {
     R.PC++;
 }
 
-template<CPU::Operand16 src>
+template<class TOp16>
 void CPU::PUSH(System& rSystem) {
-    PUSH16(rSystem, GetOperand16<src>(rSystem));
+    PUSH16(rSystem, GetOperand16<TOp16>(rSystem));
     R.PC++;
 }
 
-template<CPU::Operand16 dst>
+template<class TOp16>
 void CPU::POP(System& rSystem) {
-    SetOperand16<dst>(POP16(rSystem));
+    SetOperand16<TOp16>(POP16(rSystem));
     R.PC++;
 }
 
