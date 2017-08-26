@@ -37,7 +37,7 @@
 #include <chrono>
 #include <mutex>
 
-
+#define SDL_MAIN_HANDLED
 #include <SDL2/SDL.h>
 
 #include "FileIo.h"
@@ -177,12 +177,12 @@ int main(int argc, char* argv[])
     (void)argc;
     (void)argv;
 
-    bool use_SDL = true;
-    bool use_vsync = true;
-    bool save_screenshot_on_exit = false;
-    int speed_factor = 1;   // 0 = unlimited
+    bool use_SDL = false;
+    bool use_vsync = false;
+    bool save_screenshot_on_exit = true;
+    int speed_factor = 0;   // 0 = unlimited
 
-    int run_frame_count = 0;
+    int run_frame_count = 360;
 
     //const char* boot_rom_file_name = R"(D:\emu\gb\DMG_ROM.bin)";
     const char* boot_rom_file_name = nullptr;
@@ -257,7 +257,7 @@ int main(int argc, char* argv[])
     //file_name = R"(D:\emu\gb\Smurfs, The (Europe) (En,Fr,De,Es).gb)";
     //file_name = R"(D:\emu\gb\Dr. Franken (Europe) (En,Fr,De,Es,It,Nl,Sv).gb)";
     //file_name = R"(D:\emu\gb\Aretha II (Japan).gb)";
-    file_name = R"(D:\emu\gb\Zerd no Densetsu (Japan).gb)";
+    //file_name = R"(D:\emu\gb\Zerd no Densetsu (Japan).gb)";
 
 
     //file_name = R"(D:\emu\gb\Tests\cpu_instrs\cpu_instrs.gb)";
