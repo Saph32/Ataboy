@@ -14,6 +14,7 @@ matrix:
             - gcc-7
             - g++-7
             - cmake
+            - libsdl2-dev
       env: COMPILER=g++-7
     - compiler: clang
       addons:
@@ -25,11 +26,12 @@ matrix:
           packages:
             - clang-4.0
             - cmake
+            - libsdl2-dev
       env: COMPILER=clang++-4.0
 before_script:
   - sudo add-apt-repository -y ppa:team-xbmc/ppa
   - sudo apt-get -qq update
-  - sudo apt-get install -y libsdl2-dev libboost-dev libboost-filesystem-dev libboost-system-dev libpng-dev
+  - sudo apt-get install -y libboost-dev libboost-filesystem-dev libboost-system-dev libpng-dev
 script:
   - mkdir build
   - cd build
