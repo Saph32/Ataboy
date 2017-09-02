@@ -25,11 +25,19 @@
 
 #pragma once
 
-#include <vector>
-#include <string>
+namespace GB
+{
 
-std::vector<char> LoadFile(const char* file_name);
-std::string GetSaveFileName(const char* gamepak_file_name);
-std::vector<char> LoadSaveFile(const char* file_name, const std::size_t expected_size);
-bool SaveSaveFile(const char* file_name, const char* data, const std::size_t size);
-std::string GetScreenShotFileName(const char* gamepak_file_name);
+    enum class Access
+    {
+        Read,
+        Write,
+    };
+
+    class System;
+    class CPU;
+    class GamePak;
+    class IO;
+    class Video;
+    class Audio;
+}

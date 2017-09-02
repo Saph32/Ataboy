@@ -1,4 +1,4 @@
-// Copyright (c) 2016, Jean Charles Vallieres
+// Copyright (c) 2016-2017, Jean Charles Vallieres
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without

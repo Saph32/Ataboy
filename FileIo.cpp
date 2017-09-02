@@ -2,7 +2,7 @@
 
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
-// Copyright (c) 2016, Jean Charles Vallieres
+// Copyright (c) 2017, Jean Charles Vallieres
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without

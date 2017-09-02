@@ -25,11 +25,54 @@
 
 #pragma once
 
-#include <vector>
-#include <string>
+#include <array>
+#include <chrono>
 
-std::vector<char> LoadFile(const char* file_name);
-std::string GetSaveFileName(const char* gamepak_file_name);
-std::vector<char> LoadSaveFile(const char* file_name, const std::size_t expected_size);
-bool SaveSaveFile(const char* file_name, const char* data, const std::size_t size);
-std::string GetScreenShotFileName(const char* gamepak_file_name);
+#include "GB.h"
+#include "GB_Types.h"
+#include "GB_CPU.h"
+#include "GB_Video.h"
+#include "GB_GamePak.h"
+#include "GB_IO.h"
+#include "GB_Audio.h"
+
+namespace GB {
+
+
+class System
+{
+public:
+
+    CPU m_cpu;
+
+    bool m_new_frame = false;
+    u32 m_frame_number = 0;
+    u64 m_cycle_count = 0;
+
+    Video m_video;
+    GamePak m_game_pak;
+    IO m_io;
+    Audio m_audio;
+
+    std::array<u8, 8 * 1024> RAM = {};
+
+    std::array<u8, 256> m_boot_ROM = {};
+    bool m_boot_rom_active = false;
+
+    void Tick()
+    {
+        m_video.Tick(*this);
+        m_io.Tick(*this);
+        m_audio.Tick(*this);
+        m_cpu.DoOAMDMA(*this);
+        ++m_cycle_count;
+    }
+
+    void Reset(ResetOption reset_opt);
+    void RunFrame();
+    std::chrono::nanoseconds RunTime(const std::chrono::nanoseconds& time_to_run);
+
+    template<Access eAccess> u8 BusAccess(u16 addr, u8 v = 0);
+};
+
+} // namespace GB

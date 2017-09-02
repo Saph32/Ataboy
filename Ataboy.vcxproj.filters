@@ -41,5 +41,47 @@
     <ClInclude Include="at_scope_exit.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="GB_Types.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GB_CPU.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GB_Video.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GB_GamePak.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GB_IO.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GB_Audio.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GB_System.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GB_impl.hpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GB_CPU_impl.hpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GB_GamePak_impl.hpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GB_Video_impl.hpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GB_IO_impl.hpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GB_System_impl.hpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GB_Audio_impl.hpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

@@ -25,11 +25,46 @@
 
 #pragma once
 
-#include <vector>
-#include <string>
+#include "GB.h"
+#include "GB_Types.h"
 
-std::vector<char> LoadFile(const char* file_name);
-std::string GetSaveFileName(const char* gamepak_file_name);
-std::vector<char> LoadSaveFile(const char* file_name, const std::size_t expected_size);
-bool SaveSaveFile(const char* file_name, const char* data, const std::size_t size);
-std::string GetScreenShotFileName(const char* gamepak_file_name);
+namespace GB{
+
+class IO
+{
+public:
+
+    u8 P1 = 0;
+    u8 SB = 0;
+    u8 SC = 0;
+    union {
+        struct DividerReg {
+            u8 low;
+            u8 DIV;
+        } details;
+        u16 value = 0;
+    } Divider = {};
+
+    u8 TIMA = 0;
+    u8 TMA = 0;
+    u8 TAC = 0;
+
+    u8 m_timer_mask = 255;
+
+    bool m_serial_active = false;
+    bool m_serial_clock = false;
+    u8 m_serial_bits = 0;
+
+    Keys m_keys = {};
+
+    void Reset(ResetOption reset_opt);
+
+    void Tick(System& m_rSystem);
+
+    u8 MakeP1(System& rSystem);
+    void SetTAC(u8 v);
+
+    template<Access eAccess> u8 RegAccess(System& rSystem, const u8 addr, const u8 v = 0);
+};
+
+} // namespace GB

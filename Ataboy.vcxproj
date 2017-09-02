@@ -144,6 +144,20 @@
     <ClInclude Include="at_scope_exit.h" />
     <ClInclude Include="FileIo.h" />
     <ClInclude Include="GB.h" />
+    <ClInclude Include="GB_Audio.h" />
+    <ClInclude Include="GB_Audio_impl.hpp" />
+    <ClInclude Include="GB_CPU.h" />
+    <ClInclude Include="GB_CPU_impl.hpp" />
+    <ClInclude Include="GB_GamePak.h" />
+    <ClInclude Include="GB_GamePak_impl.hpp" />
+    <ClInclude Include="GB_impl.hpp" />
+    <ClInclude Include="GB_IO.h" />
+    <ClInclude Include="GB_IO_impl.hpp" />
+    <ClInclude Include="GB_System.h" />
+    <ClInclude Include="GB_System_impl.hpp" />
+    <ClInclude Include="GB_Types.h" />
+    <ClInclude Include="GB_Video.h" />
+    <ClInclude Include="GB_Video_impl.hpp" />
     <ClInclude Include="ImageIo.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
