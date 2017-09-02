@@ -18,6 +18,17 @@ set(SOURCE_FILES
     Main.cpp
     GB.cpp
     GB.h
+	GB_CPU.h
+	GB_Video.h
+	GB_Audio.h
+	GB_IO.h
+	GB_System.h
+	GB_impl.hpp
+	GB_CPU_impl.hpp
+	GB_Video_impl.hpp
+	GB_Audio_impl.hpp
+	GB_IO_impl.hpp
+	GB_System_impl.hpp
     FileIo.cpp
     FileIo.h
 	ImageIo.cpp
