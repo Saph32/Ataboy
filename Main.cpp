@@ -180,7 +180,7 @@ int main(int argc, char* argv[])
     bool use_SDL = true;
     bool use_vsync = true;
     bool save_screenshot_on_exit = false;
-    int speed_factor = 0;   // 0 = unlimited
+    int speed_factor = 1;   // 0 = unlimited
 
     int run_frame_count = 0;
 

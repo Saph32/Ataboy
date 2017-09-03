@@ -286,7 +286,7 @@ void CPU::BIT(System& rSystem) {
     R.PC++;
 }
 
-template<> void CPU::LD<CPU::OpIHL, CPU::Op16>(System& rSystem) {HALT(rSystem);}
+template<> void CPU::LD<CPU::OpIHL, CPU::OpIHL>(System& rSystem) {HALT(rSystem);}
 
 template<class TOpSrc8, class TOpDst8>
 void CPU::LD(System& rSystem) {
