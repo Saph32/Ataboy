@@ -35,13 +35,12 @@ namespace GB {
 
 class Video {
 public:
-
     struct FrameBuf {
         std::array<u32, 160 * 144> pix = {};
     };
 
     std::array<u8, 8 * 1024> VRAM = {};
-    std::array<u8, 256> OAM = {};
+    std::array<u8, 256>      OAM  = {};
 
     union {
         struct {
@@ -53,7 +52,8 @@ public:
             u8 windisp : 1;
             u8 wintilemap : 1;
             u8 lcden : 1;
-        } bits; u8 value = 0;
+        } bits;
+        u8 value = 0;
     } LCDC = {};
 
     union {
@@ -64,19 +64,19 @@ public:
             u8 mode1int : 1;
             u8 mode2int : 1;
             u8 coincidenceint : 1;
-        } bits; u8 value = 0;
+        } bits;
+        u8 value = 0;
     } STAT = {};
 
-    u8 SCY = 0;
-    u8 SCX = 0;
-    u8 LY = 0;
-    u8 LYC = 0;
-    u8 BGP = 0;
+    u8 SCY  = 0;
+    u8 SCX  = 0;
+    u8 LY   = 0;
+    u8 LYC  = 0;
+    u8 BGP  = 0;
     u8 OBP0 = 0;
     u8 OBP1 = 0;
-    u8 WY = 0;
-    u8 WX = 0;
-
+    u8 WY   = 0;
+    u8 WX   = 0;
     u8 LCDX = 0;
 
     u8 m_mode = 0;
@@ -91,12 +91,15 @@ public:
     void Flip(System& rSystem);
     void RenderLine();
 
-    template<Access eAccess> u8 VRAMAccess(const u16 addr, const u8 v = 0);
-    template<Access eAccess> u8 OAMAccess(const u8 addr, const u8 v = 0);
+    template<Access eAccess>
+    u8 VRAMAccess(const u16 addr, const u8 v = 0);
+    template<Access eAccess>
+    u8 OAMAccess(const u8 addr, const u8 v = 0);
 
-    void UpdateSTAT() { 
+    void UpdateSTAT()
+    {
         STAT.bits.coincidence = (LY == LYC) ? 1 : 0;
-        STAT.bits.mode = m_mode;
+        STAT.bits.mode        = m_mode;
     }
 };
 

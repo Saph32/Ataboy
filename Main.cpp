@@ -50,8 +50,7 @@ GB::Keys g_keys = {};
 
 constexpr int JOYSTICK_DEAD_ZONE = 12000;
 
-enum class Action
-{
+enum class Action {
     None,
     Quit,
     KeyUpdate,
@@ -66,41 +65,37 @@ Action PollEvents()
     SDL_PollEvent(&event);
 
     const auto prev_keys = g_keys;
-    switch(event.type) {
-    case SDL_QUIT: 
-        eAction = Action::Quit;
-        break;
+    switch (event.type) {
+    case SDL_QUIT: eAction = Action::Quit; break;
     case SDL_KEYDOWN:
-        switch(event.key.keysym.sym){
-        case SDLK_LEFT:   g_keys.k.left = 0;  break;
-        case SDLK_RIGHT:  g_keys.k.right = 0; break;
-        case SDLK_UP:     g_keys.k.up = 0;    break;
-        case SDLK_DOWN:   g_keys.k.down = 0;  break;
-        case SDLK_z:      g_keys.k.b = 0;     break;
-        case SDLK_x:      g_keys.k.a = 0;     break;
-        case SDLK_c:      g_keys.k.select = 0;break;
-        case SDLK_v:      g_keys.k.start = 0; break;
-        }; 
+        switch (event.key.keysym.sym) {
+        case SDLK_LEFT: g_keys.k.left = 0; break;
+        case SDLK_RIGHT: g_keys.k.right = 0; break;
+        case SDLK_UP: g_keys.k.up = 0; break;
+        case SDLK_DOWN: g_keys.k.down = 0; break;
+        case SDLK_z: g_keys.k.b = 0; break;
+        case SDLK_x: g_keys.k.a = 0; break;
+        case SDLK_c: g_keys.k.select = 0; break;
+        case SDLK_v: g_keys.k.start = 0; break;
+        };
         eAction = Action::KeyUpdate;
         break;
-    case SDL_KEYUP :
-        switch(event.key.keysym.sym){
-        case SDLK_LEFT:   g_keys.k.left = 1;  break;
-        case SDLK_RIGHT:  g_keys.k.right = 1; break;
-        case SDLK_UP:     g_keys.k.up = 1;    break;
-        case SDLK_DOWN:   g_keys.k.down = 1;  break;
-        case SDLK_z:      g_keys.k.b = 1;     break;
-        case SDLK_x:      g_keys.k.a = 1;     break;
-        case SDLK_c:      g_keys.k.select = 1;break;
-        case SDLK_v:      g_keys.k.start = 1; break;
+    case SDL_KEYUP:
+        switch (event.key.keysym.sym) {
+        case SDLK_LEFT: g_keys.k.left = 1; break;
+        case SDLK_RIGHT: g_keys.k.right = 1; break;
+        case SDLK_UP: g_keys.k.up = 1; break;
+        case SDLK_DOWN: g_keys.k.down = 1; break;
+        case SDLK_z: g_keys.k.b = 1; break;
+        case SDLK_x: g_keys.k.a = 1; break;
+        case SDLK_c: g_keys.k.select = 1; break;
+        case SDLK_v: g_keys.k.start = 1; break;
         }
         eAction = Action::KeyUpdate;
         break;
     case SDL_CONTROLLERBUTTONUP:
     case SDL_CONTROLLERBUTTONDOWN:
-    case SDL_CONTROLLERAXISMOTION:
-        eAction = Action::JoyUpdate;
-        break;
+    case SDL_CONTROLLERAXISMOTION: eAction = Action::JoyUpdate; break;
     }
 
     if (eAction == Action::KeyUpdate) {
@@ -112,23 +107,22 @@ Action PollEvents()
     return eAction;
 }
 
-struct AudioContext
-{
-    mutex mtx;
-    const GB::AudioSample* pBuf = nullptr;
-    size_t buf_size = 0;
-    size_t pos = 0;
-    size_t prev_pos = 0;
+struct AudioContext {
+    mutex                  mtx;
+    const GB::AudioSample* pBuf     = nullptr;
+    size_t                 buf_size = 0;
+    size_t                 pos      = 0;
+    size_t                 prev_pos = 0;
 };
 
 enum ReturnCode : int {
-    ReturnCode_OK                   = 0,
-    ReturnCode_INVALID_ROM_FILE     = 1,
-    ReturnCode_INVALID_SAVE_FILE    = 2,
-    ReturnCode_INVALID_BOOT_ROM     = 3,
-    ReturnCode_SDL_WINDOW_ERROR     = 4,
-    ReturnCode_SDL_RENDERER_ERROR   = 5,
-    ReturnCode_SDL_TEXTURE_ERROR    = 6,
+    ReturnCode_OK                 = 0,
+    ReturnCode_INVALID_ROM_FILE   = 1,
+    ReturnCode_INVALID_SAVE_FILE  = 2,
+    ReturnCode_INVALID_BOOT_ROM   = 3,
+    ReturnCode_SDL_WINDOW_ERROR   = 4,
+    ReturnCode_SDL_RENDERER_ERROR = 5,
+    ReturnCode_SDL_TEXTURE_ERROR  = 6,
     ReturnCode_SDL_AUDIO_ERROR    = 7,
 };
 
@@ -147,7 +141,7 @@ void SDLAudioCallback(void* userdata, Uint8* stream, int len)
     }
 
     const size_t nb_samples_needed = (size_t)len / sizeof(GB::AudioSample);
-    const size_t nb_samples_have = pos - pContext->prev_pos;
+    const size_t nb_samples_have   = pos - pContext->prev_pos;
 
     if (nb_samples_have < nb_samples_needed) {
         // Fill with silence
@@ -155,18 +149,20 @@ void SDLAudioCallback(void* userdata, Uint8* stream, int len)
         return;
     }
 
-    const size_t read_pos = pContext->prev_pos + nb_samples_needed;
-    const size_t buf_pos = read_pos % pContext->buf_size;
+    const size_t read_pos     = pContext->prev_pos + nb_samples_needed;
+    const size_t buf_pos      = read_pos % pContext->buf_size;
     const size_t buf_prev_pos = pContext->prev_pos % pContext->buf_size;
 
     if (buf_pos > buf_prev_pos) {
         // No wrap around
         memcpy(stream, reinterpret_cast<const Uint8*>(&pContext->pBuf[buf_prev_pos]), (size_t)len);
     } else {
-        const size_t till_end = pContext->buf_size - buf_prev_pos;
+        const size_t till_end       = pContext->buf_size - buf_prev_pos;
         const size_t till_end_bytes = till_end * sizeof(GB::AudioSample);
         memcpy(stream, reinterpret_cast<const Uint8*>(&pContext->pBuf[buf_prev_pos]), till_end_bytes);
-        memcpy(stream + till_end_bytes, reinterpret_cast<const Uint8*>(&pContext->pBuf), (size_t)len - till_end_bytes);
+        memcpy(stream + till_end_bytes,
+               reinterpret_cast<const Uint8*>(&pContext->pBuf),
+               (size_t)len - till_end_bytes);
     }
 
     pContext->prev_pos = read_pos;
@@ -177,114 +173,111 @@ int main(int argc, char* argv[])
     (void)argc;
     (void)argv;
 
-    bool use_SDL = true;
-    bool use_vsync = true;
+    bool use_SDL                 = true;
+    bool use_vsync               = true;
     bool save_screenshot_on_exit = false;
-    int speed_factor = 1;   // 0 = unlimited
+    int  speed_factor            = 1; // 0 = unlimited
 
     int run_frame_count = 0;
 
-    //const char* boot_rom_file_name = R"(D:\emu\gb\DMG_ROM.bin)";
+    // const char* boot_rom_file_name = R"(D:\emu\gb\DMG_ROM.bin)";
     const char* boot_rom_file_name = nullptr;
 
     const char* file_name = nullptr;
     if (argc > 1) {
         file_name = argv[1];
     }
-    //file_name = R"(D:\emu\gb\PD\Dan Laser Demo (PD).gb)";
-    //file_name = R"(D:\emu\gb\PD\MegAnime by Megaman_X (PD).gb)";
-    //file_name = R"(D:\emu\gb\PD\Apocalypse Now Demo (PD).gb)";
-    //file_name = R"(D:\emu\gb\PD\Kirby XXL Demo (PD).gb)";
-    //file_name = R"(D:\emu\gb\PD\pocket.gb)";
-    //file_name = R"(D:\emu\gb\PD\gejmboj.gb)";
-    //file_name = R"(D:\emu\gb\PD\20y.gb)";
-    //file_name = R"(D:\emu\gb\PD\jml-sam.gb)";
-    //file_name = R"(D:\emu\gb\PD\jmla09.gb)";
-    //file_name = R"(D:\emu\gb\PD\oh.gb)";
-    //file_name = R"(D:\emu\gb\PD\Dawn.gb)";
+    // file_name = R"(D:\emu\gb\PD\Dan Laser Demo (PD).gb)";
+    // file_name = R"(D:\emu\gb\PD\MegAnime by Megaman_X (PD).gb)";
+    // file_name = R"(D:\emu\gb\PD\Apocalypse Now Demo (PD).gb)";
+    // file_name = R"(D:\emu\gb\PD\Kirby XXL Demo (PD).gb)";
+    // file_name = R"(D:\emu\gb\PD\pocket.gb)";
+    // file_name = R"(D:\emu\gb\PD\gejmboj.gb)";
+    // file_name = R"(D:\emu\gb\PD\20y.gb)";
+    // file_name = R"(D:\emu\gb\PD\jml-sam.gb)";
+    // file_name = R"(D:\emu\gb\PD\jmla09.gb)";
+    // file_name = R"(D:\emu\gb\PD\oh.gb)";
+    // file_name = R"(D:\emu\gb\PD\Dawn.gb)";
 
+    // file_name = R"(D:\emu\gb\Asteroids (USA, Europe).gb)";
+    // file_name = R"(D:\emu\gb\Alleyway (World).gb)";
+    // file_name = R"(D:\emu\gb\Amazing Penguin (USA, Europe).gb)";
+    // file_name = R"(D:\emu\gb\Altered Space - A 3-D Alien Adventure (USA).gb)";
+    // file_name = R"(D:\emu\gb\Battle Arena Toshinden (USA) (SGB Enhanced).gb)";
+    // file_name = R"(D:\emu\gb\Bomberman GB (USA, Europe) (SGB Enhanced).gb)";
+    // file_name = R"(D:\emu\gb\Chikyuu Kaihou Gun ZAS (Japan).gb)";
+    // file_name = R"(D:\emu\gb\Castlevania - The Adventure (USA).gb)";
+    // file_name = R"(D:\emu\gb\Castlevania II - Belmont's Revenge (USA, Europe).gb)";
+    // file_name = R"(D:\emu\gb\Castlevania Legends (USA, Europe) (SGB Enhanced).gb)";
+    // file_name = R"(D:\emu\gb\Donkey Kong (World) (Rev A) (SGB Enhanced).gb)";
+    // file_name = R"(D:\emu\gb\Donkey Kong Land (USA, Europe) (SGB Enhanced).gb)";
+    // file_name = R"(D:\emu\gb\Earthworm Jim (USA).gb)";
+    // file_name = R"(D:\emu\gb\Kirby's Dream Land (USA, Europe).gb)";
+    // file_name = R"(D:\emu\gb\Foreman for Real (USA, Europe).gb)";
+    // file_name = R"(D:\emu\gb\Gauntlet II (USA, Europe).gb)";
+    // file_name = R"(D:\emu\gb\Gremlins 2 - The New Batch (World).gb)";
+    // file_name = R"(D:\emu\gb\Ken Griffey Jr. Presents Major League Baseball (USA, Europe) (SGB
+    // Enhanced).gb)";  file_name = R"(D:\emu\gb\Killer Instinct (USA, Europe) (SGB Enhanced).gb)";  file_name =
+    // R"(D:\emu\gb\Krusty's Fun House (USA, Europe).gb)";  file_name = R"(D:\emu\gb\Lion King, The (USA).gb)";
+    // file_name = R"(D:\emu\gb\Lethal Weapon (USA, Europe).gb)";
+    // file_name = R"(D:\emu\gb\Legend of Zelda, The - Link's Awakening (Canada).gb)";
+    // file_name = R"(D:\emu\gb\Mario's Picross (USA, Europe) (SGB Enhanced).gb)";
+    // file_name = R"(D:\emu\gb\Metroid II - Return of Samus (World).gb)";
+    // file_name = R"(D:\emu\gb\Mega Man - Dr. Wily's Revenge (USA).gb)";
+    // file_name = R"(D:\emu\gb\Mega Man II (USA).gb)";
+    // file_name = R"(D:\emu\gb\Mega Man III (USA).gb)";
+    // file_name = R"(D:\emu\gb\Mega Man IV (USA).gb)";
+    // file_name = R"(D:\emu\gb\Mega Man V (USA) (SGB Enhanced).gb)";
+    // file_name = R"(D:\emu\gb\Mortal Kombat II (USA, Europe).gb)";
+    // file_name = R"(D:\emu\gb\Mortal Kombat 3 (USA).gb)";
+    // file_name = R"(D:\emu\gb\Mortal Kombat 4 (USA, Europe) (SGB Enhanced).gbc)";
+    // file_name = R"(D:\emu\gb\Monster Rancher Battle Card GB (USA) (SGB Enhanced).gbc)";
+    // file_name = R"(D:\emu\gb\Mighty Morphin Power Rangers (USA, Europe) (SGB Enhanced).gb)";
+    // file_name = R"(D:\emu\gb\Nemesis (USA).gb)";
+    // file_name = R"(D:\emu\gb\Panel Action Bingo (USA).gb)";
+    // file_name = R"(D:\emu\gb\Shanghai (USA).gb)";
+    // file_name = R"(D:\emu\gb\Sports Illustrated - Football & Baseball (USA).gb)";
+    // file_name = R"(D:\emu\gb\Spot - The Cool Adventure (USA).gb)";
+    // file_name = R"(D:\emu\gb\Super Mario Land (World) (Rev A).gb)";
+    // file_name = R"(D:\emu\gb\Super Mario Land 2 - 6 Golden Coins (USA, Europe) (Rev B).gb)";
+    // file_name = R"(D:\emu\gb\Super R.C. Pro-Am (USA, Europe).gb)";
+    // file_name = R"(D:\emu\gb\Trip World (Europe).gb)";
+    // file_name = R"(D:\emu\gb\V-Rally - Championship Edition (Europe) (En,Fr,De).gb)";
+    // file_name = R"(D:\emu\gb\Wario Blast featuring Bomberman! (USA, Europe) (SGB Enhanced).gb)";
+    // file_name = R"(D:\emu\gb\Wario Land - Super Mario Land 3 (World).gb)";
+    // file_name = R"(D:\emu\gb\Game & Watch Gallery 3 (USA, Europe) (SGB Enhanced).gbc)";
+    // file_name = R"(D:\emu\gb\NBA 3 on 3 featuring Kobe Bryant (USA) (SGB Enhanced).gbc)";
+    // file_name = R"(D:\emu\gb\Godzilla - The Series (USA) (En,Fr,De).gbc)";
+    // file_name = R"(D:\emu\gb\Smurfs, The (Europe) (En,Fr,De,Es).gb)";
+    // file_name = R"(D:\emu\gb\Dr. Franken (Europe) (En,Fr,De,Es,It,Nl,Sv).gb)";
+    // file_name = R"(D:\emu\gb\Aretha II (Japan).gb)";
+    // file_name = R"(D:\emu\gb\Zerd no Densetsu (Japan).gb)";
 
-    //file_name = R"(D:\emu\gb\Asteroids (USA, Europe).gb)";
-    //file_name = R"(D:\emu\gb\Alleyway (World).gb)";
-    //file_name = R"(D:\emu\gb\Amazing Penguin (USA, Europe).gb)";
-    //file_name = R"(D:\emu\gb\Altered Space - A 3-D Alien Adventure (USA).gb)";
-    //file_name = R"(D:\emu\gb\Battle Arena Toshinden (USA) (SGB Enhanced).gb)";
-    //file_name = R"(D:\emu\gb\Bomberman GB (USA, Europe) (SGB Enhanced).gb)";
-    //file_name = R"(D:\emu\gb\Chikyuu Kaihou Gun ZAS (Japan).gb)";
-    //file_name = R"(D:\emu\gb\Castlevania - The Adventure (USA).gb)";
-    //file_name = R"(D:\emu\gb\Castlevania II - Belmont's Revenge (USA, Europe).gb)";
-    //file_name = R"(D:\emu\gb\Castlevania Legends (USA, Europe) (SGB Enhanced).gb)";
-    //file_name = R"(D:\emu\gb\Donkey Kong (World) (Rev A) (SGB Enhanced).gb)";
-    //file_name = R"(D:\emu\gb\Donkey Kong Land (USA, Europe) (SGB Enhanced).gb)";
-    //file_name = R"(D:\emu\gb\Earthworm Jim (USA).gb)";
-    //file_name = R"(D:\emu\gb\Kirby's Dream Land (USA, Europe).gb)";
-    //file_name = R"(D:\emu\gb\Foreman for Real (USA, Europe).gb)";
-    //file_name = R"(D:\emu\gb\Gauntlet II (USA, Europe).gb)";
-    //file_name = R"(D:\emu\gb\Gremlins 2 - The New Batch (World).gb)";
-    //file_name = R"(D:\emu\gb\Ken Griffey Jr. Presents Major League Baseball (USA, Europe) (SGB Enhanced).gb)";
-    //file_name = R"(D:\emu\gb\Killer Instinct (USA, Europe) (SGB Enhanced).gb)";
-    //file_name = R"(D:\emu\gb\Krusty's Fun House (USA, Europe).gb)";
-    //file_name = R"(D:\emu\gb\Lion King, The (USA).gb)";
-    //file_name = R"(D:\emu\gb\Lethal Weapon (USA, Europe).gb)";
-    //file_name = R"(D:\emu\gb\Legend of Zelda, The - Link's Awakening (Canada).gb)";
-    //file_name = R"(D:\emu\gb\Mario's Picross (USA, Europe) (SGB Enhanced).gb)";
-    //file_name = R"(D:\emu\gb\Metroid II - Return of Samus (World).gb)";
-    //file_name = R"(D:\emu\gb\Mega Man - Dr. Wily's Revenge (USA).gb)";
-    //file_name = R"(D:\emu\gb\Mega Man II (USA).gb)";
-    //file_name = R"(D:\emu\gb\Mega Man III (USA).gb)";
-    //file_name = R"(D:\emu\gb\Mega Man IV (USA).gb)";
-    //file_name = R"(D:\emu\gb\Mega Man V (USA) (SGB Enhanced).gb)";
-    //file_name = R"(D:\emu\gb\Mortal Kombat II (USA, Europe).gb)";
-    //file_name = R"(D:\emu\gb\Mortal Kombat 3 (USA).gb)";
-    //file_name = R"(D:\emu\gb\Mortal Kombat 4 (USA, Europe) (SGB Enhanced).gbc)";
-    //file_name = R"(D:\emu\gb\Monster Rancher Battle Card GB (USA) (SGB Enhanced).gbc)";
-    //file_name = R"(D:\emu\gb\Mighty Morphin Power Rangers (USA, Europe) (SGB Enhanced).gb)";
-    //file_name = R"(D:\emu\gb\Nemesis (USA).gb)";
-    //file_name = R"(D:\emu\gb\Panel Action Bingo (USA).gb)";
-    //file_name = R"(D:\emu\gb\Shanghai (USA).gb)";
-    //file_name = R"(D:\emu\gb\Sports Illustrated - Football & Baseball (USA).gb)";
-    //file_name = R"(D:\emu\gb\Spot - The Cool Adventure (USA).gb)";
-    //file_name = R"(D:\emu\gb\Super Mario Land (World) (Rev A).gb)";
-    //file_name = R"(D:\emu\gb\Super Mario Land 2 - 6 Golden Coins (USA, Europe) (Rev B).gb)";
-    //file_name = R"(D:\emu\gb\Super R.C. Pro-Am (USA, Europe).gb)";
-    //file_name = R"(D:\emu\gb\Trip World (Europe).gb)";
-    //file_name = R"(D:\emu\gb\V-Rally - Championship Edition (Europe) (En,Fr,De).gb)";
-    //file_name = R"(D:\emu\gb\Wario Blast featuring Bomberman! (USA, Europe) (SGB Enhanced).gb)";
-    //file_name = R"(D:\emu\gb\Wario Land - Super Mario Land 3 (World).gb)";
-    //file_name = R"(D:\emu\gb\Game & Watch Gallery 3 (USA, Europe) (SGB Enhanced).gbc)";
-    //file_name = R"(D:\emu\gb\NBA 3 on 3 featuring Kobe Bryant (USA) (SGB Enhanced).gbc)";
-    //file_name = R"(D:\emu\gb\Godzilla - The Series (USA) (En,Fr,De).gbc)";
-    //file_name = R"(D:\emu\gb\Smurfs, The (Europe) (En,Fr,De,Es).gb)";
-    //file_name = R"(D:\emu\gb\Dr. Franken (Europe) (En,Fr,De,Es,It,Nl,Sv).gb)";
-    //file_name = R"(D:\emu\gb\Aretha II (Japan).gb)";
-    //file_name = R"(D:\emu\gb\Zerd no Densetsu (Japan).gb)";
+    // file_name = R"(D:\emu\gb\Tests\cpu_instrs\cpu_instrs.gb)";
+    // file_name = R"(D:\emu\gb\Tests\cpu_instrs\individual\02-interrupts.gb)";
+    // file_name = R"(D:\emu\gb\Tests\instr_timing\instr_timing.gb)";
 
+    // file_name = R"(D:\emu\gb\Tests\dmg_sound\dmg_sound.gb)";
 
-    //file_name = R"(D:\emu\gb\Tests\cpu_instrs\cpu_instrs.gb)";
-    //file_name = R"(D:\emu\gb\Tests\cpu_instrs\individual\02-interrupts.gb)";
-    //file_name = R"(D:\emu\gb\Tests\instr_timing\instr_timing.gb)";
+    // file_name = R"(D:\emu\gb\Tests\dmg_sound\rom_singles\01-registers.gb)";
+    // file_name = R"(D:\emu\gb\Tests\dmg_sound\rom_singles\02-len ctr.gb)";
+    // file_name = R"(D:\emu\gb\Tests\dmg_sound\rom_singles\03-trigger.gb)";
+    // file_name = R"(D:\emu\gb\Tests\dmg_sound\rom_singles\04-sweep.gb)";
+    // file_name = R"(D:\emu\gb\Tests\dmg_sound\rom_singles\05-sweep details.gb)";
+    // file_name = R"(D:\emu\gb\Tests\dmg_sound\rom_singles\06-overflow on trigger.gb)";
+    // file_name = R"(D:\emu\gb\Tests\dmg_sound\rom_singles\07-len sweep period sync.gb)";
+    // file_name = R"(D:\emu\gb\Tests\dmg_sound\rom_singles\08-len ctr during power.gb)";
+    // file_name = R"(D:\emu\gb\Tests\dmg_sound\rom_singles\09-wave read while on.gb)";
+    // file_name = R"(D:\emu\gb\Tests\dmg_sound\rom_singles\10-wave trigger while on.gb)";
+    // file_name = R"(D:\emu\gb\Tests\dmg_sound\rom_singles\11-regs after power.gb)";
+    // file_name = R"(D:\emu\gb\Tests\dmg_sound\rom_singles\12-wave write while on.gb)";
 
-    //file_name = R"(D:\emu\gb\Tests\dmg_sound\dmg_sound.gb)";
-    
-    //file_name = R"(D:\emu\gb\Tests\dmg_sound\rom_singles\01-registers.gb)";
-    //file_name = R"(D:\emu\gb\Tests\dmg_sound\rom_singles\02-len ctr.gb)";
-    //file_name = R"(D:\emu\gb\Tests\dmg_sound\rom_singles\03-trigger.gb)";
-    //file_name = R"(D:\emu\gb\Tests\dmg_sound\rom_singles\04-sweep.gb)";
-    //file_name = R"(D:\emu\gb\Tests\dmg_sound\rom_singles\05-sweep details.gb)";
-    //file_name = R"(D:\emu\gb\Tests\dmg_sound\rom_singles\06-overflow on trigger.gb)";
-    //file_name = R"(D:\emu\gb\Tests\dmg_sound\rom_singles\07-len sweep period sync.gb)";
-    //file_name = R"(D:\emu\gb\Tests\dmg_sound\rom_singles\08-len ctr during power.gb)";
-    //file_name = R"(D:\emu\gb\Tests\dmg_sound\rom_singles\09-wave read while on.gb)";
-    //file_name = R"(D:\emu\gb\Tests\dmg_sound\rom_singles\10-wave trigger while on.gb)";
-    //file_name = R"(D:\emu\gb\Tests\dmg_sound\rom_singles\11-regs after power.gb)";
-    //file_name = R"(D:\emu\gb\Tests\dmg_sound\rom_singles\12-wave write while on.gb)";
+    // file_name = R"(D:\emu\gb\Tests\mem_timing\mem_timing.gb)";
+    // file_name = R"(D:\emu\gb\Tests\mem_timing-2\mem_timing.gb)";
+    // file_name = R"(D:\emu\gb\Tests\interrupt_time\interrupt_time.gb)";
+    // file_name = R"(D:\emu\gb\Tests\halt_bug.gb)";
 
-    //file_name = R"(D:\emu\gb\Tests\mem_timing\mem_timing.gb)";
-    //file_name = R"(D:\emu\gb\Tests\mem_timing-2\mem_timing.gb)";
-    //file_name = R"(D:\emu\gb\Tests\interrupt_time\interrupt_time.gb)";
-    //file_name = R"(D:\emu\gb\Tests\halt_bug.gb)";
-
-    //file_name = R"()";
+    // file_name = R"()";
 
     const vector<char> buffer = LoadFile(file_name);
 
@@ -338,20 +331,23 @@ int main(int argc, char* argv[])
     AudioContext audio_context = {};
 
     audio_context.buf_size = gb.GetAudioBufSize();
-    audio_context.pBuf = gb.GetAudioBuf();
+    audio_context.pBuf     = gb.GetAudioBuf();
 
-    SDL_Window* pWindow = nullptr;
-    SDL_Renderer* pRenderer = nullptr;
-    SDL_Texture* pTexture = nullptr;
-    SDL_AudioDeviceID audio_dev = 0;
+    SDL_Window*         pWindow    = nullptr;
+    SDL_Renderer*       pRenderer  = nullptr;
+    SDL_Texture*        pTexture   = nullptr;
+    SDL_AudioDeviceID   audio_dev  = 0;
     SDL_GameController* controller = nullptr;
 
     if (use_SDL) {
         SDL_Init(SDL_INIT_EVERYTHING);
 
-        pWindow = SDL_CreateWindow("Ataboy", 
-            SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 
-            160 * zoom, 144 * zoom, SDL_WINDOW_SHOWN);
+        pWindow = SDL_CreateWindow("Ataboy",
+                                   SDL_WINDOWPOS_UNDEFINED,
+                                   SDL_WINDOWPOS_UNDEFINED,
+                                   160 * zoom,
+                                   144 * zoom,
+                                   SDL_WINDOW_SHOWN);
 
         if (!pWindow) {
             printf("Can't initialize SDL window\n");
@@ -373,10 +369,8 @@ int main(int argc, char* argv[])
 
         SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "nearest");
         SDL_RenderSetLogicalSize(pRenderer, 160, 144);
-        pTexture = SDL_CreateTexture(pRenderer,
-            SDL_PIXELFORMAT_ARGB8888,
-            SDL_TEXTUREACCESS_STREAMING,
-            160, 144);
+        pTexture =
+            SDL_CreateTexture(pRenderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 160, 144);
 
         if (!pTexture) {
             printf("Can't initialize SDL texture\n");
@@ -388,13 +382,13 @@ int main(int argc, char* argv[])
 
         audio_want.callback = &SDLAudioCallback;
         audio_want.channels = 2;
-        audio_want.format = AUDIO_S16LSB;
-        audio_want.freq = 32768;
-        audio_want.samples = 512;
+        audio_want.format   = AUDIO_S16LSB;
+        audio_want.freq     = 32768;
+        audio_want.samples  = 512;
         audio_want.userdata = &audio_context;
 
         audio_dev = SDL_OpenAudioDevice(nullptr, 0, &audio_want, &audio_have, 0);
-    
+
         if (!audio_dev) {
             printf("Can't initialize SDL audio\n");
             return ReturnCode_SDL_AUDIO_ERROR;
@@ -410,22 +404,21 @@ int main(int argc, char* argv[])
                 }
             }
         }
-
     }
 
     auto start_time = high_resolution_clock::now();
-    int nb_frames = 0;
+    int  nb_frames  = 0;
 
     if (use_SDL) {
         SDL_PauseAudioDevice(audio_dev, 0);
     }
 
     GB::u32 last_rendered_frame = 0;
-    auto run_time = high_resolution_clock::now();
-    auto pause_time = nanoseconds(0);
+    auto    run_time            = high_resolution_clock::now();
+    auto    pause_time          = nanoseconds(0);
 
     bool bQuit = false;
-    while(!bQuit) {
+    while (!bQuit) {
         if (use_SDL) {
             Action eAction = Action::None;
             do {
@@ -433,7 +426,12 @@ int main(int argc, char* argv[])
 
                 if (eAction == Action::JoyUpdate && controller) {
                     auto prev_keys = g_keys;
-#define CHECK_BUTTON(x, y) if (SDL_GameControllerGetButton(controller, x)) { y = 0; } else { y = 1;}
+#define CHECK_BUTTON(x, y)                                                                                   \
+    if (SDL_GameControllerGetButton(controller, x)) {                                                        \
+        y = 0;                                                                                               \
+    } else {                                                                                                 \
+        y = 1;                                                                                               \
+    }
                     CHECK_BUTTON(SDL_CONTROLLER_BUTTON_DPAD_LEFT, g_keys.k.left);
                     CHECK_BUTTON(SDL_CONTROLLER_BUTTON_DPAD_RIGHT, g_keys.k.right);
                     CHECK_BUTTON(SDL_CONTROLLER_BUTTON_DPAD_UP, g_keys.k.up);
@@ -475,14 +473,11 @@ int main(int argc, char* argv[])
                 lock_guard<mutex> lock(audio_context.mtx);
                 audio_context.pos = gb.GetAudioBufPos();
             }
-
-
         }
 
         if (bQuit) {
             break;
         }
-
 
         const auto cur_frame_number = gb.GetFrameNumber();
 
@@ -534,9 +529,9 @@ int main(int argc, char* argv[])
 
             if (start_time + seconds(1) < time_now) {
                 const duration<float> fsec = time_now - start_time;
-                const float fps = 1.0f * nb_frames / fsec.count();
+                const float           fps  = 1.0f * nb_frames / fsec.count();
                 printf("FPS:%.2f (%.0f%%)\r", fps, fps / 60 * 100);
-                nb_frames = 0;
+                nb_frames  = 0;
                 start_time = time_now;
             }
 

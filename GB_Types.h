@@ -25,19 +25,18 @@
 
 #pragma once
 
-namespace GB
-{
+namespace GB {
 
-    enum class Access
-    {
-        Read,
-        Write,
-    };
+enum class Access {
+    Read,
+    Write,
+};
 
-    class System;
-    class CPU;
-    class GamePak;
-    class IO;
-    class Video;
-    class Audio;
-}
+class System;
+class CPU;
+class GamePak;
+class IO;
+class Video;
+class Audio;
+
+} // namespace GB

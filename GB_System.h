@@ -38,41 +38,34 @@
 
 namespace GB {
 
-
-class System
-{
+class System {
 public:
+    CPU m_cpu = {};
 
-    CPU m_cpu;
+    bool m_new_frame    = false;
+    u32  m_frame_number = 0;
+    u64  m_cycle_count  = 0;
 
-    bool m_new_frame = false;
-    u32 m_frame_number = 0;
-    u64 m_cycle_count = 0;
-
-    Video m_video;
-    GamePak m_game_pak;
-    IO m_io;
-    Audio m_audio;
+    Video   m_video    = {};
+    GamePak m_game_pak = {};
+    IO      m_io       = {};
+    Audio   m_audio    = {};
 
     std::array<u8, 8 * 1024> RAM = {};
 
     std::array<u8, 256> m_boot_ROM = {};
+
     bool m_boot_rom_active = false;
 
-    void Tick()
-    {
-        m_video.Tick(*this);
-        m_io.Tick(*this);
-        m_audio.Tick(*this);
-        m_cpu.DoOAMDMA(*this);
-        ++m_cycle_count;
-    }
+    void Tick();
 
     void Reset(ResetOption reset_opt);
     void RunFrame();
+
     std::chrono::nanoseconds RunTime(const std::chrono::nanoseconds& time_to_run);
 
-    template<Access eAccess> u8 BusAccess(u16 addr, u8 v = 0);
+    template<Access eAccess>
+    u8 BusAccess(u16 addr, u8 v = 0);
 };
 
 } // namespace GB

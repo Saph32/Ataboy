@@ -32,12 +32,9 @@
 #include "GB_Types.h"
 
 namespace GB {
-class GamePak
-{
+class GamePak {
 public:
-
-    enum class MBC
-    {
+    enum class MBC {
         None = 0,
         MBC1 = 1,
         MBC2 = 2,
@@ -48,32 +45,38 @@ public:
     std::vector<u8> ROM;
     std::vector<u8> RAM;
 
-    union
-    {
-        struct
-        {
-            u8 EntryPoint[4];   u8 Logo[48];        u8 Title[16];       u8 NewLicenseCode[2];
-            u8 SGBFlag;         u8 CartType;        u8 ROMSize;         u8 RAMSize;
-            u8 DestinationCode; u8 OldLicenseCode;  u8 MaskROMVersion;  u8 HeaderChecksum;
+    union {
+        struct {
+            u8  EntryPoint[4];
+            u8  Logo[48];
+            u8  Title[16];
+            u8  NewLicenseCode[2];
+            u8  SGBFlag;
+            u8  CartType;
+            u8  ROMSize;
+            u8  RAMSize;
+            u8  DestinationCode;
+            u8  OldLicenseCode;
+            u8  MaskROMVersion;
+            u8  HeaderChecksum;
             u16 GlobalChecksum;
         } fields;
         std::array<u8, 80> raw = {};
     } m_header = {};
 
-    size_t m_ROM_size = 0;
-    size_t m_RAM_size = 0;
+    size_t m_ROM_size       = 0;
+    size_t m_RAM_size       = 0;
     size_t m_ROM_bank_count = 0;
     size_t m_RAM_bank_count = 0;
 
     MBC m_MBC = MBC::None;
 
-    u8 m_ROM_bank_select = 0;
-    u8 m_RAM_bank_select = 0;
-    u8 m_MBC1_extra_select = 0;
+    u8 m_ROM_bank_select           = 0;
+    u8 m_RAM_bank_select           = 0;
+    u8 m_MBC1_extra_select         = 0;
     u8 m_MBC5_high_ROM_bank_select = 0;
 
-    enum class MBC1ExtraMode
-    {
+    enum class MBC1ExtraMode {
         ROM = 0,
         RAM = 1,
     };
@@ -93,8 +96,10 @@ public:
 
     ROM_Header m_public_header = {};
 
-    template<Access eAccess> u8 ROMAccess(const u16 addr, const u8 v = 0);
-    template<Access eAccess> u8 RAMAccess(const u16 addr, const u8 v = 0);
+    template<Access eAccess>
+    u8 ROMAccess(const u16 addr, const u8 v = 0);
+    template<Access eAccess>
+    u8 RAMAccess(const u16 addr, const u8 v = 0);
 
     bool Load(const char* pROM_data, size_t size);
     bool LoadSaveRAM(const char* pRAM_data, size_t size);

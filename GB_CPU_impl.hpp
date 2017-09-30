@@ -27,51 +27,57 @@ namespace GB {
 
 void CPU::Reset(ResetOption reset_opt)
 {
-    if (reset_opt & ResetOption_USE_BOOT_ROM)
-    {
-        R.PC = 0;
-        R.SP = 0;
-        R.af8.A = 0;
+    if (reset_opt & ResetOption_USE_BOOT_ROM) {
+        R.PC        = 0;
+        R.SP        = 0;
+        R.af8.A     = 0;
         R.af8.FLAGS = 0;
-        R.F.Z = 0; R.F.N = 0; R.F.C = 0; R.F.H = 0;
-        R.BC = 0;
-        R.DE = 0;
-        R.HL = 0;
-        IF.value = 0xE1;
-    }
-    else
-    {
-        R.PC = 0x100;
-        R.SP = 0xFFFE;
-        R.af8.A = 0x01;
+        R.F.Z       = 0;
+        R.F.N       = 0;
+        R.F.C       = 0;
+        R.F.H       = 0;
+        R.BC        = 0;
+        R.DE        = 0;
+        R.HL        = 0;
+        IF.value    = 0xE1;
+    } else {
+        R.PC        = 0x100;
+        R.SP        = 0xFFFE;
+        R.af8.A     = 0x01;
         R.af8.FLAGS = 0xB0;
-        R.F.Z = 1; R.F.N = 0; R.F.C = 1; R.F.H = 1;
-        R.BC = 0x0013;
-        R.DE = 0x00d8;
-        R.HL = 0x014d;
-        IF.value = 0;
+        R.F.Z       = 1;
+        R.F.N       = 0;
+        R.F.C       = 1;
+        R.F.H       = 1;
+        R.BC        = 0x0013;
+        R.DE        = 0x00d8;
+        R.HL        = 0x014d;
+        IF.value    = 0;
     }
 
     fill(begin(HRAM), end(HRAM), u8(0));
 
-    //bQuit = false;
-    m_halt = false;
-    m_ei_delay = false;
+    // bQuit = false;
+    m_halt           = false;
+    m_ei_delay       = false;
     m_oam_dma_active = false;
-    m_oam_dma_src = 0;
-    m_oam_dma_index = 0;
+    m_oam_dma_src    = 0;
+    m_oam_dma_index  = 0;
 }
 
-inline u8 CPU::RB(System & rSystem, const u16 addr) {
+inline u8 CPU::RB(System& rSystem, const u16 addr)
+{
     rSystem.Tick();
     return rSystem.BusAccess<Access::Read>(addr);
 }
 
-inline void CPU::WB(System & rSystem, const u16 addr, const u8 v) {
+inline void CPU::WB(System& rSystem, const u16 addr, const u8 v)
+{
     rSystem.Tick();
     rSystem.BusAccess<Access::Write>(addr, v);
 }
 
+// clang-format off
 template<> u16 CPU::GetOperand16<CPU::OpBC>(System&) {return R.BC;}
 template<> u16 CPU::GetOperand16<CPU::OpDE>(System&) {return R.DE;}
 template<> u16 CPU::GetOperand16<CPU::OpHL>(System&) {return R.HL;}
@@ -123,16 +129,19 @@ template<> void CPU::SetOperand8<CPU::OpIoC>(System& rSystem, const u8 v) {WB(rS
 template<> void CPU::SetOperand8<CPU::OpHLI>(System& rSystem, const u8 v) {WB(rSystem, R.HL, v); R.HL++;}
 template<> void CPU::SetOperand8<CPU::OpHLD>(System& rSystem, const u8 v) {WB(rSystem, R.HL, v); R.HL--;}
 template<> void CPU::SetOperand8<CPU::OpIImm>(System& rSystem, const u8 v) {const u16 t = GetOperand16<OpImm16>(rSystem); WB(rSystem, t, v);}
+// clang-format on
 
-void CPU::NOP(System&) {
-    R.PC++; 
+void CPU::NOP(System&)
+{
+    R.PC++;
 }
 
 template<class TOp8>
-void CPU::INC(System& rSystem) {
-    u8 t = GetOperand8<TOp8>(rSystem);
+void CPU::INC(System& rSystem)
+{
+    u8 t  = GetOperand8<TOp8>(rSystem);
     R.F.H = ((t & 0xf) == 0xf) ? 1 : 0;
-    t = (t + 1) & 0xff;
+    t     = (t + 1) & 0xff;
     SetOperand8<TOp8>(rSystem, t);
     R.F.N = 0;
     R.F.Z = (t == 0) ? 1 : 0;
@@ -140,29 +149,31 @@ void CPU::INC(System& rSystem) {
 }
 
 template<class TOp16>
-void CPU::INC16(System& rSystem) {
+void CPU::INC16(System& rSystem)
+{
     u16 t = GetOperand16<TOp16>(rSystem);
-    t = t + 1;
+    t     = t + 1;
     SetOperand16<TOp16>(t);
     R.PC++;
     rSystem.Tick();
 }
 
 template<class TOp16>
-void CPU::DEC16(System& rSystem) {
+void CPU::DEC16(System& rSystem)
+{
     u16 t = GetOperand16<TOp16>(rSystem);
-    t = t - 1;
+    t     = t - 1;
     SetOperand16<TOp16>(t);
-    R.PC++; 
+    R.PC++;
     rSystem.Tick();
 }
 
 template<class TOp8>
 void CPU::DEC(System& rSystem)
 {
-    u8 t = GetOperand8<TOp8>(rSystem);
+    u8 t  = GetOperand8<TOp8>(rSystem);
     R.F.H = ((t & 0xf) == 0) ? 1 : 0;
-    t = (t - 1) & 0xff;
+    t     = (t - 1) & 0xff;
     SetOperand8<TOp8>(rSystem, t);
     R.F.N = 1;
     R.F.Z = (t == 0) ? 1 : 0;
@@ -172,19 +183,17 @@ void CPU::DEC(System& rSystem)
 template<class TOp8, CPU::OpALU alu>
 void CPU::ALU(System& rSystem)
 {
-#pragma warning( push )
-#pragma warning( disable : 4127 )   // warning C4127: conditional expression is constant
-
+#pragma warning(push)
+#pragma warning(disable : 4127) // warning C4127: conditional expression is constant
 
     const bool carry = (alu == ADC || alu == SBC);
-    const bool sub = !(alu == ADD || alu == ADC);
-    size_t t = GetOperand8<TOp8>(rSystem);
+    const bool sub   = !(alu == ADD || alu == ADC);
+    size_t     t     = GetOperand8<TOp8>(rSystem);
 
     if (sub) {
         R.F.H = (((R.af8.A & 0xf) - (t & 0xf) - (carry ? R.F.C : 0)) >> 4) & 1;
-        t = R.af8.A - t - (carry ? R.F.C : 0);
-    }
-    else {
+        t     = R.af8.A - t - (carry ? R.F.C : 0);
+    } else {
         R.F.H = ((t & 0xf) + (R.af8.A & 0xf) + (carry ? R.F.C : 0)) >> 4;
         t += R.af8.A + (carry ? R.F.C : 0);
     }
@@ -195,15 +204,16 @@ void CPU::ALU(System& rSystem)
     R.F.C = (t >> 8) & 1;
     R.F.N = sub ? 1 : 0;
     R.PC++;
-#pragma warning( pop )
+#pragma warning(pop)
 }
 
 template<class TOp16>
-void CPU::ADDHL(System& rSystem) {
+void CPU::ADDHL(System& rSystem)
+{
     size_t t = GetOperand16<TOp16>(rSystem);
-    R.F.H = ((R.HL & 0x0fff) + (t & 0x0fff) > 0x0fff) ? 1 : 0;
+    R.F.H    = ((R.HL & 0x0fff) + (t & 0x0fff) > 0x0fff) ? 1 : 0;
     t += R.HL;
-    R.HL = (t & 0xffff);
+    R.HL  = (t & 0xffff);
     R.F.C = (t >> 16) & 1;
     R.F.N = 0;
     R.PC++;
@@ -211,12 +221,13 @@ void CPU::ADDHL(System& rSystem) {
 }
 
 template<class TOp8, CPU::OpBITW op>
-void CPU::BITW(System& rSystem) {
+void CPU::BITW(System& rSystem)
+{
     u8 t = GetOperand8<TOp8>(rSystem);
     switch (op) {
     case AND: R.af8.A &= t; break;
-    case OR:  R.af8.A |= t; break;
-    case XOR:  R.af8.A ^= t; break;
+    case OR: R.af8.A |= t; break;
+    case XOR: R.af8.A ^= t; break;
     }
     R.F.C = 0;
     R.F.N = 0;
@@ -228,25 +239,23 @@ void CPU::BITW(System& rSystem) {
 template<class TOp8, CPU::OpBITS op>
 void CPU::BITS(System& rSystem)
 {
-#pragma warning( push )
-#pragma warning( disable : 4127 ) // warning C4127: conditional expression is constant
+#pragma warning(push)
+#pragma warning(disable : 4127) // warning C4127: conditional expression is constant
     const bool z0 = (op == RLA || op == RLCA || op == RRA || op == RRCA);
     // TODO : Test with size_t
-    u8 t = GetOperand8<TOp8>(rSystem);
+    u8 t      = GetOperand8<TOp8>(rSystem);
     u8 prevFC = R.F.C;
     if (op == RL || op == RLA || op == RLC || op == RLCA || op == SLA) {
         R.F.C = (t & 0x80) ? 1 : 0;
-    }
-    else if (op == RR || op == RRA || op == RRC || op == RRCA || op == SRA || op == SRL) {
+    } else if (op == RR || op == RRA || op == RRC || op == RRCA || op == SRA || op == SRL) {
         R.F.C = t & 1;
-    }
-    else { 
-        R.F.C = 0; 
+    } else {
+        R.F.C = 0;
     }
 
     switch (op) {
     case RL:
-    case RLA:  t = (t << 1) + prevFC; break;
+    case RLA: t = (t << 1) + prevFC; break;
     case RLC:
     case RLCA: t = (t << 1) + ((t >> 7) & 1); break;
     case RR:
@@ -263,99 +272,118 @@ void CPU::BITS(System& rSystem)
     R.F.Z = (!z0 && (t & 0xff) == 0) ? 1 : 0;
     SetOperand8<TOp8>(rSystem, t);
     R.PC++;
-#pragma warning( pop )
+#pragma warning(pop)
 }
 
 template<class TOp8, u8 bit>
-void CPU::SET(System& rSystem) {
+void CPU::SET(System& rSystem)
+{
     SetOperand8<TOp8>(rSystem, GetOperand8<TOp8>(rSystem) | (1 << bit));
     R.PC++;
 }
 
 template<class TOp8, u8 bit>
-void CPU::RES(System& rSystem) {
+void CPU::RES(System& rSystem)
+{
     SetOperand8<TOp8>(rSystem, GetOperand8<TOp8>(rSystem) & (~(1 << bit)));
     R.PC++;
 }
 
 template<class TOp8, u8 bit>
-void CPU::BIT(System& rSystem) {
+void CPU::BIT(System& rSystem)
+{
     R.F.N = 0;
     R.F.H = 1;
     R.F.Z = (GetOperand8<TOp8>(rSystem) & (1 << bit)) ? 0 : 1;
     R.PC++;
 }
 
-template<> void CPU::LD<CPU::OpIHL, CPU::OpIHL>(System& rSystem) {HALT(rSystem);}
+template<>
+void CPU::LD<CPU::OpIHL, CPU::OpIHL>(System& rSystem)
+{
+    HALT(rSystem);
+}
 
 template<class TOpSrc8, class TOpDst8>
-void CPU::LD(System& rSystem) {
+void CPU::LD(System& rSystem)
+{
     SetOperand8<TOpDst8>(rSystem, GetOperand8<TOpSrc8>(rSystem));
     R.PC++;
 }
 
 template<class TOp16>
-void CPU::LD16(System& rSystem) {
+void CPU::LD16(System& rSystem)
+{
     SetOperand16<TOp16>(GetOperand16<OpImm16>(rSystem));
-    R.PC++; 
+    R.PC++;
 }
 
-void CPU::LDSP(System& rSystem) {
+void CPU::LDSP(System& rSystem)
+{
     u16 t = GetOperand16<OpImm16>(rSystem);
     WB(rSystem, t, R.SP & 0xff);
     t++;
     WB(rSystem, t, (R.SP >> 8) & 0xff);
-    R.PC++; 
+    R.PC++;
 }
 
-void CPU::LDSPHL(System& rSystem) {
+void CPU::LDSPHL(System& rSystem)
+{
     R.SP = R.HL;
     rSystem.Tick();
-    R.PC++; 
+    R.PC++;
 }
 
 template<class TOp16>
 void CPU::LDSPOF(System& rSystem)
 {
     R.PC++;
-    const u8 tu = RB(rSystem, R.PC);
-    const auto t = reinterpret_cast<const signed char&>(tu);
+    const u8   tu = RB(rSystem, R.PC);
+    const auto t  = reinterpret_cast<const signed char&>(tu);
+
     R.PC++;
     R.F.H = (((R.SP & 0x0f) + (tu & 0x0f)) >> 4) & 1;
     R.F.C = (((size_t)(R.SP & 0xff) + tu) >> 8) & 1;
+
     const u16 t16 = R.SP + t;
     SetOperand16<TOp16>(t16);
     R.F.Z = 0;
     R.F.N = 0;
     rSystem.Tick();
-#pragma warning( push )
-#pragma warning( disable : 4127 )   // warning C4127: conditional expression is constant
+#pragma warning(push)
+#pragma warning(disable : 4127) // warning C4127: conditional expression is constant
     if (TOp16::op16 == Op16::SP) {
         rSystem.Tick();
     }
-#pragma warning( pop )
+#pragma warning(pop)
 }
 
-void CPU::HALT(System&) {
-    m_halt = true; R.PC++;
-}
-
-void CPU::STOP(System&) {
+void CPU::HALT(System&)
+{
+    m_halt = true;
     R.PC++;
 }
 
-void CPU::CB(System& rSystem) {
-    R.PC++; 
+void CPU::STOP(System&)
+{
+    R.PC++;
+}
+
+void CPU::CB(System& rSystem)
+{
+    R.PC++;
     (this->*(m_op_codes_CB[RB(rSystem, R.PC)]))(rSystem);
 }
 
-void CPU::SCF(System&) {
+void CPU::SCF(System&)
+{
     R.F.C = 1;
     R.F.H = 0;
     R.F.N = 0;
     R.PC++;
 }
-void CPU::CCF(System&) {
+void CPU::CCF(System&)
+{
     R.F.C = R.F.C ^ 1;
     R.F.H = 0;
     R.F.N = 0;
@@ -363,13 +391,15 @@ void CPU::CCF(System&) {
 }
 
 template<class TOp16>
-void CPU::PUSH(System& rSystem) {
+void CPU::PUSH(System& rSystem)
+{
     PUSH16(rSystem, GetOperand16<TOp16>(rSystem));
     R.PC++;
 }
 
 template<class TOp16>
-void CPU::POP(System& rSystem) {
+void CPU::POP(System& rSystem)
+{
     SetOperand16<TOp16>(POP16(rSystem));
     R.PC++;
 }
@@ -386,15 +416,18 @@ void CPU::CALL(System& rSystem)
 }
 
 template<u8 addr>
-void CPU::RST(System& rSystem) {
-    R.PC++; PUSH16(rSystem, R.PC);
+void CPU::RST(System& rSystem)
+{
+    R.PC++;
+    PUSH16(rSystem, R.PC);
     R.PC = addr;
 }
 
 template<CPU::CondFlag con>
-void CPU::RET(System& rSystem) {
-#pragma warning( push )
-#pragma warning( disable : 4127 )   // warning C4127: conditional expression is constant
+void CPU::RET(System& rSystem)
+{
+#pragma warning(push)
+#pragma warning(disable : 4127) // warning C4127: conditional expression is constant
 
     rSystem.Tick();
     if (Condition<con>()) {
@@ -402,30 +435,30 @@ void CPU::RET(System& rSystem) {
         if (con != Always && con != RETI) {
             rSystem.Tick();
         }
-    }
-    else {
+    } else {
         R.PC++;
     }
     if (con == RETI) {
         IME = true;
     }
-#pragma warning( pop )
+#pragma warning(pop)
 }
 
 template<CPU::CondFlag con>
-void CPU::JP(System& rSystem) {
+void CPU::JP(System& rSystem)
+{
     const u16 t = GetOperand16<OpImm16>(rSystem);
     if (Condition<con>()) {
         R.PC = t;
         rSystem.Tick();
-    }
-    else { 
+    } else {
         R.PC++;
     }
 }
 
 template<CPU::CondFlag con>
-void CPU::JR(System& rSystem) {
+void CPU::JR(System& rSystem)
+{
     R.PC++;
     const u8 t = RB(rSystem, R.PC);
     R.PC++;
@@ -435,26 +468,30 @@ void CPU::JR(System& rSystem) {
     }
 }
 
-void CPU::JPHL(System&) {
+void CPU::JPHL(System&)
+{
     R.PC = R.HL;
 }
 
-void CPU::EI(System&) {
+void CPU::EI(System&)
+{
     IME = true;
     R.PC++;
     m_ei_delay = true;
 };
 
-void CPU::DI(System&) {
+void CPU::DI(System&)
+{
     IME = false;
     R.PC++;
     m_ei_delay = false;
 };
 
-void CPU::CPL(System&) {
+void CPU::CPL(System&)
+{
     R.af8.A = ~R.af8.A;
-    R.F.N = 1;
-    R.F.H = 1;
+    R.F.N   = 1;
+    R.F.H   = 1;
     R.PC++;
 }
 
@@ -472,8 +509,7 @@ void CPU::DAA(System&)
         if (R.F.C) {
             tmp -= 0x60;
         }
-    }
-    else {
+    } else {
         if ((R.F.H) || (tmp & 0x0F) > 9) {
             tmp += 6;
         }
@@ -487,32 +523,33 @@ void CPU::DAA(System&)
         R.F.C = 1;
     }
     R.af8.A = tmp & 0xFF;
-    R.F.Z = (R.af8.A == 0) ? 1 : 0;
+    R.F.Z   = (R.af8.A == 0) ? 1 : 0;
 
     R.PC++;
-
 }
 
 template<CPU::CondFlag con>
-bool CPU::Condition() const {
+bool CPU::Condition() const
+{
     switch (con) {
     case CondZ: return (R.F.Z != 0);
     case CondNZ: return (R.F.Z == 0);
     case CondC: return (R.F.C != 0);
     case CondNC: return (R.F.C == 0);
     case RETI:
-    case Always:
-        return true;
+    case Always: return true;
     }
     return true;
 }
 
-void CPU::PUSH16(System& rSystem, const u16 v) {
-    union { 
+void CPU::PUSH16(System& rSystem, const u16 v)
+{
+    union {
         struct {
             u8 L;
             u8 H;
-        } hl8; u16 HL = 0;
+        } hl8;
+        u16 HL = 0;
     } t = {};
 
     t.HL = v;
@@ -523,12 +560,14 @@ void CPU::PUSH16(System& rSystem, const u16 v) {
     rSystem.Tick();
 }
 
-u16 CPU::POP16(System& rSystem) {
+u16 CPU::POP16(System& rSystem)
+{
     union {
         struct {
             u8 L;
             u8 H;
-        } hl8; u16 HL = 0;
+        } hl8;
+        u16 HL = 0;
     } t = {};
 
     t.hl8.L = RB(rSystem, R.SP);
@@ -538,6 +577,7 @@ u16 CPU::POP16(System& rSystem) {
     return t.HL;
 }
 
+// clang-format off
 #define STD_OPERANDS(x,y) x<OpB, y>, x<OpC, y>, x<OpD, y>, x<OpE, y>, x<OpH, y>, x<OpL, y>, x<OpIHL, y>, x<OpA, y>
 const array<CPU::OpCodeFn, 256> CPU::m_op_codes = {
     &CPU::NOP,              &CPU::LD16<OpBC>,  &CPU::LD<OpA, OpIBC>,  &CPU::INC16<OpBC>, &CPU::INC<OpB>,      &CPU::DEC<OpB>,    &CPU::LD<OpImm, OpB>,     &CPU::BITS<OpA, RLCA>,
@@ -584,12 +624,14 @@ const array<CPU::OpCodeFn, 256> CPU::m_op_codes_CB = {
     STD_OPERANDS(&CPU::SET, 0),    STD_OPERANDS(&CPU::SET, 1),    STD_OPERANDS(&CPU::SET, 2),    STD_OPERANDS(&CPU::SET, 3),
     STD_OPERANDS(&CPU::SET, 4),    STD_OPERANDS(&CPU::SET, 5),    STD_OPERANDS(&CPU::SET, 6),    STD_OPERANDS(&CPU::SET, 7),
 };
+// clang-format on
 
-void CPU::DoOAMDMA(System& rSystem) {
+void CPU::DoOAMDMA(System& rSystem)
+{
 
     if (m_oam_dma_active) {
 
-        const u16 addr = m_oam_dma_src + m_oam_dma_index;
+        const u16 addr                       = m_oam_dma_src + m_oam_dma_index;
         rSystem.m_video.OAM[m_oam_dma_index] = rSystem.BusAccess<Access::Read>(addr);
         ++m_oam_dma_index;
         if (m_oam_dma_index == 160) {
@@ -612,25 +654,25 @@ void CPU::Execute(System& rSystem)
     } else if (IF.value & IE.value & 0x1f) {
         if (IME) {
             u16 ivector = 0x40;
-            if (IF.f.joypad & IE.f.joypad){
+            if (IF.f.joypad & IE.f.joypad) {
                 IF.f.joypad = 0;
-                ivector = 0x60;
+                ivector     = 0x60;
             } else if (IF.f.serial & IE.f.serial) {
                 IF.f.serial = 0;
-                ivector = 0x58;
+                ivector     = 0x58;
             } else if (IF.f.timer & IE.f.timer) {
                 IF.f.timer = 0;
-                ivector = 0x50;
+                ivector    = 0x50;
             } else if (IF.f.lcdstat & IE.f.lcdstat) {
                 IF.f.lcdstat = 0;
-                ivector = 0x48;
+                ivector      = 0x48;
             } else if (IF.f.vblank & IE.f.vblank) {
                 IF.f.vblank = 0;
-                ivector = 0x40;
+                ivector     = 0x40;
             };
             IME = false;
             PUSH16(rSystem, R.PC);
-            R.PC = ivector;
+            R.PC   = ivector;
             m_halt = false;
         } else if (m_halt) {
             // HALT bug

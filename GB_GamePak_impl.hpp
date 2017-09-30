@@ -25,13 +25,13 @@
 
 namespace GB {
 
-bool GamePak::Load(const char * pROM_data, size_t size) {
+bool GamePak::Load(const char* pROM_data, size_t size)
+{
     auto fnRead = [&](auto dest, size_t src_offset, size_t read_size) -> bool {
         if (src_offset + read_size <= size) {
             memcpy(dest, pROM_data + src_offset, read_size);
             return true;
-        }
-        else {
+        } else {
             return false;
         }
     };
@@ -41,7 +41,7 @@ bool GamePak::Load(const char * pROM_data, size_t size) {
         return false;
     }
 
-    char title[sizeof(m_header.fields.Title) + 1] = { 0 };
+    char title[sizeof(m_header.fields.Title) + 1] = {0};
 
     memcpy(title, m_header.fields.Title, sizeof(m_header.fields.Title));
 
@@ -49,10 +49,22 @@ bool GamePak::Load(const char * pROM_data, size_t size) {
 
     switch (m_header.fields.CartType) {
     case 0x00: m_MBC = MBC::None; break;
-    case 0x01: case 0x02: case 0x03: m_MBC = MBC::MBC1;break;
-    case 0x05: case 0x06: m_MBC = MBC::MBC2; break;
-    case 0x0f: case 0x10: case 0x11: case 0x12: case 0x13: m_MBC = MBC::MBC3; break;
-    case 0x19: case 0x1a: case 0x1b: case 0x1c: case 0x1d: case 0x1e: m_MBC = MBC::MBC5; break;
+    case 0x01:
+    case 0x02:
+    case 0x03: m_MBC = MBC::MBC1; break;
+    case 0x05:
+    case 0x06: m_MBC = MBC::MBC2; break;
+    case 0x0f:
+    case 0x10:
+    case 0x11:
+    case 0x12:
+    case 0x13: m_MBC = MBC::MBC3; break;
+    case 0x19:
+    case 0x1a:
+    case 0x1b:
+    case 0x1c:
+    case 0x1d:
+    case 0x1e: m_MBC = MBC::MBC5; break;
     default: printf("Error : Invalid MBC\n"); return false;
     }
 
@@ -72,7 +84,7 @@ bool GamePak::Load(const char * pROM_data, size_t size) {
     }
 
     if (m_MBC == MBC::MBC2) {
-        m_RAM_size = 512; 
+        m_RAM_size = 512;
     }
 
     m_RAM_bank_count = 0;
@@ -81,11 +93,9 @@ bool GamePak::Load(const char * pROM_data, size_t size) {
         const size_t ram_size = max(m_RAM_size, size_t(8 * 1024));
         RAM.resize(ram_size);
         m_RAM_bank_count = ram_size / (8 * 1024);
-        m_RAM_bank_mask = m_RAM_bank_count - 1;
+        m_RAM_bank_mask  = m_RAM_bank_count - 1;
         // TODO : fill ram with garbage
-    }
-    else
-    {
+    } else {
         // Allocate some dummy ram space
         RAM.resize(8 * 1024);
         m_RAM_bank_mask = 0;
@@ -99,20 +109,19 @@ bool GamePak::Load(const char * pROM_data, size_t size) {
         return false;
     }
 
-    m_pCur_ROM_bank = &ROM[0x4000];
+    m_pCur_ROM_bank  = &ROM[0x4000];
     m_ROM_bank_count = rom_size / (16 * 1024);
-    m_ROM_bank_mask = m_ROM_bank_count - 1;
+    m_ROM_bank_mask  = m_ROM_bank_count - 1;
 
-    m_public_header.title = title;
+    m_public_header.title    = title;
     m_public_header.RAM_size = m_RAM_size;
 
     return true;
 }
 
-bool GamePak::LoadSaveRAM(const char * pRAM_data, size_t size)
+bool GamePak::LoadSaveRAM(const char* pRAM_data, size_t size)
 {
-    if (m_RAM_size != size)
-    {
+    if (m_RAM_size != size) {
         printf("ERROR : Incorrect SaveRAM size\n");
         return false;
     }
@@ -121,8 +130,9 @@ bool GamePak::LoadSaveRAM(const char * pRAM_data, size_t size)
     return true;
 }
 
-template <>
-u8 GamePak::ROMAccess<Access::Write>(const u16 addr, const u8 v) {
+template<>
+u8 GamePak::ROMAccess<Access::Write>(const u16 addr, const u8 v)
+{
 
     auto fnUpdateCurROMBank = [this]() {
         m_cur_ROM_bank &= m_ROM_bank_mask;
@@ -144,11 +154,9 @@ u8 GamePak::ROMAccess<Access::Write>(const u16 addr, const u8 v) {
     if (addr <= 0x1FFF) {
         m_ram_enabled = ((v & 0xF) == 0x0A);
     } else if (addr <= 0x3fff) {
-        switch (m_MBC)
-        {
+        switch (m_MBC) {
         case MBC::None:
-        default:
-            break;
+        default: break;
         case MBC::MBC1:
             m_ROM_bank_select = v & 0x1F;
             if (m_ROM_bank_select == 0) {
@@ -159,7 +167,7 @@ u8 GamePak::ROMAccess<Access::Write>(const u16 addr, const u8 v) {
             break;
         case MBC::MBC2:
             m_ROM_bank_select = v & 0xF;
-            m_cur_ROM_bank = m_ROM_bank_select;
+            m_cur_ROM_bank    = m_ROM_bank_select;
             fnUpdateCurROMBank();
             break;
         case MBC::MBC3:
@@ -173,8 +181,7 @@ u8 GamePak::ROMAccess<Access::Write>(const u16 addr, const u8 v) {
         case MBC::MBC5:
             if (addr <= 0x2fff) {
                 m_ROM_bank_select = v;
-            }
-            else {
+            } else {
                 m_MBC5_high_ROM_bank_select = v & 1;
             }
             m_cur_ROM_bank = m_ROM_bank_select;
@@ -183,16 +190,13 @@ u8 GamePak::ROMAccess<Access::Write>(const u16 addr, const u8 v) {
             break;
         }
     } else if (addr <= 0x5fff) {
-        switch (m_MBC)
-        {
+        switch (m_MBC) {
         case MBC::None:
         case MBC::MBC2:
-        default:
-            break;
+        default: break;
         case MBC::MBC1:
             m_MBC1_extra_select = v & 0x03;
-            if (m_MBC1_extra_mode == MBC1ExtraMode::ROM)
-            {
+            if (m_MBC1_extra_mode == MBC1ExtraMode::ROM) {
                 fnComputeMBC1ROMBank();
                 fnUpdateCurROMBank();
             } else {
@@ -203,20 +207,18 @@ u8 GamePak::ROMAccess<Access::Write>(const u16 addr, const u8 v) {
         case MBC::MBC3:
             if (v < 4) {
                 m_RAM_bank_select = v;
-                m_cur_RAM_bank = m_RAM_bank_select;
+                m_cur_RAM_bank    = m_RAM_bank_select;
                 fnUpdateCurRAMBank();
             }
             break;
         case MBC::MBC5:
             m_RAM_bank_select = v & 0x03;
-            m_cur_RAM_bank = m_RAM_bank_select;
+            m_cur_RAM_bank    = m_RAM_bank_select;
             fnUpdateCurRAMBank();
             break;
         }
-    } else if (addr <= 0x7fff)
-    {
-        if (m_MBC == MBC::MBC1)
-        {
+    } else if (addr <= 0x7fff) {
+        if (m_MBC == MBC::MBC1) {
             m_MBC1_extra_mode = (v & 1) ? MBC1ExtraMode::RAM : MBC1ExtraMode::ROM;
             fnComputeMBC1ROMBank();
             fnUpdateCurROMBank();
@@ -228,12 +230,12 @@ u8 GamePak::ROMAccess<Access::Write>(const u16 addr, const u8 v) {
     return 0;
 }
 
-template <>
-u8 GamePak::ROMAccess<Access::Read>(const u16 addr, const u8) {
+template<>
+u8 GamePak::ROMAccess<Access::Read>(const u16 addr, const u8)
+{
     if (addr < 0x4000) {
         return ROM[addr];
-    }
-    else {
+    } else {
         return m_pCur_ROM_bank[addr & 0x3fff];
     }
 }
@@ -241,21 +243,19 @@ u8 GamePak::ROMAccess<Access::Read>(const u16 addr, const u8) {
 template<Access eAccess>
 u8 GamePak::RAMAccess(const u16 addr, const u8 v)
 {
-#pragma warning( push )
-#pragma warning( disable : 4127 )   // warning C4127: conditional expression is constant
+#pragma warning(push)
+#pragma warning(disable : 4127) // warning C4127: conditional expression is constant
 
-    if (m_ram_enabled)
-    {
+    if (m_ram_enabled) {
         if (eAccess == Access::Write) {
             RAM[addr & 0x1fff] = v;
-        }
-        else {
+        } else {
             return RAM[addr & 0x1fff];
         }
     }
 
     return 0xFF;
-#pragma warning( pop )
+#pragma warning(pop)
 }
 
-} // namespace GB;
+} // namespace GB

@@ -40,12 +40,12 @@ namespace filesystem = boost::filesystem;
 
 static const std::string separator = filesystem::path("/").make_preferred().string();
 
-vector<char> LoadFile(const char * file_name)
+vector<char> LoadFile(const char* file_name)
 {
+
     vector<char> buf;
 
-    if (!filesystem::exists(file_name))
-    {
+    if (!filesystem::exists(file_name)) {
         printf("ERROR : File %s doesn't exists\n", file_name);
         return {};
     }
@@ -53,17 +53,15 @@ vector<char> LoadFile(const char * file_name)
     ifstream file(file_name, ios::binary);
 
     const size_t size = filesystem::file_size(file_name);
-    if (size == 0)
-    {
+    if (size == 0) {
         printf("ERROR : File %s is empty\n", file_name);
         return {};
     }
 
     buf.resize(size);
 
-    if (!file.read(buf.data(), size))
-    {
-        return{};
+    if (!file.read(buf.data(), size)) {
+        return {};
     }
 
     return buf;
@@ -71,13 +69,13 @@ vector<char> LoadFile(const char * file_name)
 
 std::string GetSaveFileName(const char* gamepak_file_name)
 {
+
     filesystem::path gamepak(gamepak_file_name);
 
     // Build save file name
     // Check with capital .SAV extension
     filesystem::path savefile = gamepak.parent_path().string() + separator + gamepak.stem().string() + ".SAV";
-    if (exists(savefile))
-    {
+    if (exists(savefile)) {
         return savefile.string();
     }
 
@@ -86,20 +84,22 @@ std::string GetSaveFileName(const char* gamepak_file_name)
     return savefile.string();
 }
 
-std::vector<char> LoadSaveFile(const char * file_name, const size_t expected_size)
+std::vector<char> LoadSaveFile(const char* file_name, const size_t expected_size)
 {
+
     std::vector<char> buf;
 
-    if (!filesystem::exists(file_name))
-    {
+    if (!filesystem::exists(file_name)) {
         printf("WARNING : SAV file doesn't exists. Will create a new one.\n");
         return buf;
     }
 
     const size_t actual_file_size = filesystem::file_size(file_name);
-    if (actual_file_size < expected_size)
-    {
-        printf("WARNING : SAV file size too small (expected:%d got:%d). File will be ignored and overwritten.\n", (int)expected_size, (int)actual_file_size);
+    if (actual_file_size < expected_size) {
+        printf(
+            "WARNING : SAV file size too small (expected:%d got:%d). File will be ignored and overwritten.\n",
+            (int)expected_size,
+            (int)actual_file_size);
         return buf;
     }
 
@@ -107,21 +107,20 @@ std::vector<char> LoadSaveFile(const char * file_name, const size_t expected_siz
 
     buf.resize(actual_file_size);
 
-    if (!file.read(buf.data(), actual_file_size))
-    {
+    if (!file.read(buf.data(), actual_file_size)) {
         printf("WARNING : Error reading SAV file. File will be ignored and overwritten.\n");
-        return{};
+        return {};
     }
 
     return buf;
 }
 
-bool SaveSaveFile(const char * file_name, const char * data, const size_t size)
+bool SaveSaveFile(const char* file_name, const char* data, const size_t size)
 {
+
     ofstream out(file_name, ios::binary);
 
-    if (!out)
-    {
+    if (!out) {
         printf("ERROR : Cannot write save file %s\n", file_name);
         return false;
     }
@@ -133,29 +132,28 @@ bool SaveSaveFile(const char * file_name, const char * data, const size_t size)
 
 std::string GetScreenShotFileName(const char* gamepak_file_name)
 {
+
     filesystem::path gamepak(gamepak_file_name);
 
     int index = 0;
-    while (index < 1000)
-    {
+    while (index < 1000) {
         string suffix;
 
-        if (index > 0)
-        {
+        if (index > 0) {
             suffix = "_" + to_string(index);
         }
 
         // Build save file name
-        filesystem::path image_file = gamepak.parent_path().string() + separator + gamepak.stem().string() + suffix + ".PNG";
+        filesystem::path image_file =
+            gamepak.parent_path().string() + separator + gamepak.stem().string() + suffix + ".PNG";
 
         // Check that it doesn't exists
-        if (!exists(image_file))
-        {
+        if (!exists(image_file)) {
             // Check that the capital version doesn't exists either
-            image_file = gamepak.parent_path().string() + separator + gamepak.stem().string() + suffix + ".png";
+            image_file =
+                gamepak.parent_path().string() + separator + gamepak.stem().string() + suffix + ".png";
 
-            if (!exists(image_file))
-            {
+            if (!exists(image_file)) {
                 return image_file.string();
             }
         }

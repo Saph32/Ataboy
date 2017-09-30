@@ -30,20 +30,18 @@
 #include <string>
 #include <utility>
 
-namespace GB
-{
+namespace GB {
 
-typedef unsigned char   u8;
-typedef unsigned short  u16;
-typedef unsigned int    u32;
+typedef unsigned char          u8;
+typedef unsigned short         u16;
+typedef unsigned int           u32;
 typedef unsigned long long int u64;
-typedef signed short i16;
-typedef signed int i32;
+typedef signed short           i16;
+typedef signed int             i32;
 
-struct ROM_Header
-{
+struct ROM_Header {
     std::string title;
-    size_t RAM_size;
+    size_t      RAM_size = 0;
 };
 
 class System;
@@ -58,25 +56,22 @@ union Keys {
         u8 b : 1;
         u8 select : 1;
         u8 start : 1;
-    } k; u8 value = 0;
+    } k;
+    u8 value = 0;
 };
 
-struct AudioSample
-{
-    i16 left;
-    i16 right;
+struct AudioSample {
+    i16 left  = 0;
+    i16 right = 0;
 };
 
-enum ResetOption
-{
-    ResetOption_NONE            = 0x00,
-    ResetOption_USE_BOOT_ROM    = 0x01,
+enum ResetOption {
+    ResetOption_NONE         = 0x00,
+    ResetOption_USE_BOOT_ROM = 0x01,
 };
 
-class GB
-{
+class GB {
 public:
-    
     GB();
     ~GB();
 
@@ -87,19 +82,22 @@ public:
     void Reset(ResetOption reset_opt);
 
     void RunFrame();
+
     std::chrono::nanoseconds RunTime(const std::chrono::nanoseconds& time_to_run);
-    u32 GetFrameNumber();
+
+    u32        GetFrameNumber();
     const u32* GetPixels() const;
-    void UpdateKeys(const Keys& rKeys);
+    void       UpdateKeys(const Keys& rKeys);
+
     const AudioSample* GetAudioBuf() const;
-    const size_t GetAudioBufSize() const;
-    size_t GetAudioBufPos() const;
+    const size_t       GetAudioBufSize() const;
+    size_t             GetAudioBufPos() const;
 
     const ROM_Header& RefHeader() const;
+
     std::pair<const char*, size_t> RefSaveRAM() const;
 
 private:
-
     std::unique_ptr<System> m_pSystem;
 };
 

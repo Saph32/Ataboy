@@ -30,16 +30,36 @@
 #include "GB.h"
 #include "GB_Types.h"
 
-namespace GB
-{
-class CPU
-{
+namespace GB {
+
+class CPU {
 public:
+    enum class Op8 {
+        A,     // Register A
+        B,     // Register B
+        C,     // Register C
+        D,     // Register D
+        E,     // Register E
+        H,     // Register H
+        L,     // Register L
+        IHL,   // Indirect (HL)
+        Imm,   // Immediate 16 bits
+        IBC,   // Indirect (BC)
+        IDE,   // Indirect (DE)
+        IoImm, // Indirect IO (0xFF00 + Immediate 8 bits)
+        IoC,   // Indirect IO (0xFF00 + C)
+        HLI,   // Indirect (HL), post increment
+        HLD,   // Indirect (HL), post decrement
+        IImm,  // Indirect (Immediate 16 bits)
+    };
 
-    enum class Op8 { A, B, C, D, E, H, L, IHL, Imm, IBC, IDE, IoImm, IoC, HLI, HLD, IImm };
-    struct Op8Type {};
+    struct Op8Type {
+    };
 
-#define DEFINE_OP8_TYPE(x) struct Op ## x : public Op8Type {static constexpr auto op8 = Op8::x;};
+#define DEFINE_OP8_TYPE(x)                                                                                   \
+    struct Op##x : public Op8Type {                                                                          \
+        static constexpr auto op8 = Op8::x;                                                                  \
+    };
 
     DEFINE_OP8_TYPE(A);
     DEFINE_OP8_TYPE(B);
@@ -58,10 +78,21 @@ public:
     DEFINE_OP8_TYPE(HLD);
     DEFINE_OP8_TYPE(IImm);
 
-    enum class Op16 { BC, DE, HL, SP, AF, Imm16 };
-    struct Op16Type {};
+    enum class Op16 {
+        BC,    // Register BC
+        DE,    // Register DE
+        HL,    // Register HL
+        SP,    // Register SP
+        AF,    // Register AF
+        Imm16, // Immediate 16 bits
+    };
+    struct Op16Type {
+    };
 
-#define DEFINE_OP16_TYPE(x) struct Op ## x : public Op16Type {static constexpr auto op16 = Op16::x;};
+#define DEFINE_OP16_TYPE(x)                                                                                  \
+    struct Op##x : public Op16Type {                                                                         \
+        static constexpr auto op16 = Op16::x;                                                                \
+    };
 
     DEFINE_OP16_TYPE(BC);
     DEFINE_OP16_TYPE(DE);
@@ -78,6 +109,7 @@ public:
     typedef void (CPU::*OpCodeFn)(System&);
 
     // Registers
+    // clang-format off
     struct CPURegs
     {
         union { struct { u8 C; u8 B; } bc8; u16 BC; };
@@ -93,11 +125,12 @@ public:
         u16 PC;
         u16 SP;
     } R = {};
+    // clang-format on
 
     std::array<u8, 128> HRAM = {};
 
     // Internal state
-    bool IME = false;    // Interrupt enable
+    bool IME = false; // Interrupt enable
 
     union IFLAG {
         struct Flags {
@@ -111,13 +144,13 @@ public:
     };
 
     IFLAG& IE = (IFLAG&)HRAM[127];
-    IFLAG IF = {};
+    IFLAG  IF = {};
 
-    bool m_halt = false;
-    bool m_ei_delay = false;
+    bool m_halt           = false;
+    bool m_ei_delay       = false;
     bool m_oam_dma_active = false;
-    u16 m_oam_dma_src = 0;
-    u8 m_oam_dma_index = 0;
+    u16  m_oam_dma_src    = 0;
+    u8   m_oam_dma_index  = 0;
 
     static const std::array<OpCodeFn, 256> m_op_codes;
     static const std::array<OpCodeFn, 256> m_op_codes_CB;
@@ -127,52 +160,57 @@ public:
     u8   RB(System& rSystem, const u16 addr);
     void WB(System& rSystem, const u16 addr, const u8 v);
 
-    template<class Op8T> u8 GetOperand8(System& rSystem);
-    template<class Op8T> void SetOperand8(System& rSystem,const u8 v);
-    template<class Op16T> u16 GetOperand16(System& rSystem);
+    // clang-format off
+    template<class Op8T>  u8   GetOperand8(System& rSystem);
+    template<class Op8T>  void SetOperand8(System& rSystem, const u8 v);
+    template<class Op16T> u16  GetOperand16(System& rSystem);
     template<class Op16T> void SetOperand16(const u16 v);
 
     void NOP(System& rSystem);
-    template<class Op8T> void INC(System& rSystem);
-    template<class Op16T> void INC16(System& rSystem);
-    template<class Op16T> void DEC16(System& rSystem);
-    template<class Op8T> void DEC(System& rSystem);
-    template<class Op8T, OpALU alu> void ALU(System& rSystem);
-    template<class Op16T> void ADDHL(System& rSystem);
-    template<class Op8T, OpBITW op> void BITW(System& rSystem);
-    template<class Op8T, OpBITS op> void BITS(System& rSystem);
-    template<class Op8T, u8 bit> void SET(System& rSystem);
-    template<class Op8T, u8 bit> void RES(System& rSystem);
-    template<class Op8T, u8 bit> void BIT(System& rSystem);
+
+    template<class Op8T>                   void INC(System& rSystem);
+    template<class Op16T>                  void INC16(System& rSystem);
+    template<class Op16T>                  void DEC16(System& rSystem);
+    template<class Op8T>                   void DEC(System& rSystem);
+    template<class Op8T, OpALU alu>        void ALU(System& rSystem);
+    template<class Op16T>                  void ADDHL(System& rSystem);
+    template<class Op8T, OpBITW op>        void BITW(System& rSystem);
+    template<class Op8T, OpBITS op>        void BITS(System& rSystem);
+    template<class Op8T, u8 bit>           void SET(System& rSystem);
+    template<class Op8T, u8 bit>           void RES(System& rSystem);
+    template<class Op8T, u8 bit>           void BIT(System& rSystem);
     template<class Op8SrcT, class Op8DstT> void LD(System& rSystem);
-    template<class Op16DstT> void LD16(System& rSystem);
+    template<class Op16DstT>               void LD16(System& rSystem);
+    template<class Op16T>                  void LDSPOF(System& rSystem);
+
     void LDSP(System& rSystem);
     void LDSPHL(System& rSystem);
-    template<class Op16T> void LDSPOF(System& rSystem);
     void HALT(System& rSystem);
     void STOP(System& rSystem);
     void CB(System& rSystem);
     void SCF(System& rSystem);
     void CCF(System& rSystem);
-    template<class Op16T> void PUSH(System& rSystem);
-    template<class Op16T> void POP(System& rSystem);
+
+    template<class Op16T>  void PUSH(System& rSystem);
+    template<class Op16T>  void POP(System& rSystem);
     template<CondFlag con> void CALL(System& rSystem);
-    template<u8 addr> void RST(System& rSystem);
+    template<u8 addr>      void RST(System& rSystem);
     template<CondFlag con> void RET(System& rSystem);
     template<CondFlag con> void JP(System& rSystem);
     template<CondFlag con> void JR(System& rSystem);
+
     void JPHL(System& rSystem);
     void EI(System& rSystem);
     void DI(System& rSystem);
     void CPL(System& rSystem);
     void DAA(System& rSystem);
+    void PUSH16(System& rSystem, const u16 v);
+    u16  POP16(System& rSystem);
 
     template<CondFlag con> bool Condition() const;
-    void PUSH16(System& rSystem, const u16 v);
-    u16 POP16(System& rSystem);
+    // clang-format on
 
     void DoOAMDMA(System& rSystem);
-
     void Execute(System& rSystem);
 };
 } // namespace GB

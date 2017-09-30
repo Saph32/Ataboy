@@ -25,26 +25,21 @@
 
 namespace GB {
 
-GB::GB()
-    : m_pSystem(new System)
-{
-}
+GB::GB() : m_pSystem(new System) {}
 
-GB::~GB()
-{
-}
+GB::~GB() {}
 
-bool GB::Load(const char * pRom_data, size_t size)
+bool GB::Load(const char* pRom_data, size_t size)
 {
     return m_pSystem->m_game_pak.Load(pRom_data, size);
 }
 
-bool GB::LoadSaveRAM(const char * pRom_data, size_t size)
+bool GB::LoadSaveRAM(const char* pRom_data, size_t size)
 {
     return m_pSystem->m_game_pak.LoadSaveRAM(pRom_data, size);
 }
 
-bool GB::LoadBootROM(const char * pROM_data, size_t size)
+bool GB::LoadBootROM(const char* pROM_data, size_t size)
 {
     if (size != 256) {
         return false;
@@ -75,18 +70,18 @@ u32 GB::GetFrameNumber()
     return m_pSystem->m_frame_number;
 }
 
-const u32 * GB::GetPixels() const
+const u32* GB::GetPixels() const
 {
     return m_pSystem->m_video.m_upBack_buf->pix.data();
 }
 
-void GB::UpdateKeys(const Keys & rKeys)
+void GB::UpdateKeys(const Keys& rKeys)
 {
     m_pSystem->m_io.m_keys = rKeys;
     m_pSystem->m_io.MakeP1(*m_pSystem);
 }
 
-const AudioSample * GB::GetAudioBuf() const
+const AudioSample* GB::GetAudioBuf() const
 {
     return m_pSystem->m_audio.m_audio_buf.data();
 }
@@ -101,7 +96,7 @@ size_t GB::GetAudioBufPos() const
     return m_pSystem->m_audio.m_audio_pos;
 }
 
-const ROM_Header & GB::RefHeader() const
+const ROM_Header& GB::RefHeader() const
 {
     return m_pSystem->m_game_pak.m_public_header;
 }
@@ -111,4 +106,4 @@ std::pair<const char*, size_t> GB::RefSaveRAM() const
     return {(const char*)(m_pSystem->m_game_pak.RAM.data()), m_pSystem->m_game_pak.m_RAM_size};
 }
 
-}
+} // namespace GB
