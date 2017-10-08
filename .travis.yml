@@ -24,6 +24,8 @@ matrix:
             - llvm-toolchain-trusty
             - ubuntu-toolchain-r-test
           packages:
+            - gcc-7
+            - g++-7
             - clang-4.0
             - cmake
             - libsdl2-dev
