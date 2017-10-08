@@ -192,6 +192,7 @@ int main(int argc, char* argv[])
     const string boot_rom_file_name = rProg_opts.boot_ROM_file;
     const char*  file_name          = rProg_opts.ROM_file.c_str();
 
+    // clang-format off
     // file_name = R"(D:\emu\gb\PD\Dan Laser Demo (PD).gb)";
     // file_name = R"(D:\emu\gb\PD\MegAnime by Megaman_X (PD).gb)";
     // file_name = R"(D:\emu\gb\PD\Apocalypse Now Demo (PD).gb)";
@@ -221,9 +222,9 @@ int main(int argc, char* argv[])
     // file_name = R"(D:\emu\gb\Foreman for Real (USA, Europe).gb)";
     // file_name = R"(D:\emu\gb\Gauntlet II (USA, Europe).gb)";
     // file_name = R"(D:\emu\gb\Gremlins 2 - The New Batch (World).gb)";
-    // file_name = R"(D:\emu\gb\Ken Griffey Jr. Presents Major League Baseball (USA, Europe) (SGB
-    // Enhanced).gb)";  file_name = R"(D:\emu\gb\Killer Instinct (USA, Europe) (SGB Enhanced).gb)";  file_name =
-    // R"(D:\emu\gb\Krusty's Fun House (USA, Europe).gb)";  file_name = R"(D:\emu\gb\Lion King, The (USA).gb)";
+    // file_name = R"(D:\emu\gb\Ken Griffey Jr. Presents Major League Baseball (USA, Europe) (SGB Enhanced).gb)";
+    // file_name = R"(D:\emu\gb\Killer Instinct (USA, Europe) (SGB Enhanced).gb)";
+    // file_name = R"(D:\emu\gb\Krusty's Fun House (USA, Europe).gb)";  file_name = R"(D:\emu\gb\Lion King, The (USA).gb)";
     // file_name = R"(D:\emu\gb\Lethal Weapon (USA, Europe).gb)";
     // file_name = R"(D:\emu\gb\Legend of Zelda, The - Link's Awakening (Canada).gb)";
     // file_name = R"(D:\emu\gb\Mario's Picross (USA, Europe) (SGB Enhanced).gb)";
@@ -283,6 +284,7 @@ int main(int argc, char* argv[])
     // file_name = R"(D:\emu\gb\Tests\halt_bug.gb)";
 
     // file_name = R"()";
+    // clang-format on
 
     const vector<char> buffer = LoadFile(file_name);
 
