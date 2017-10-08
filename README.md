@@ -5,7 +5,7 @@ How to compile :
 
 Windows:
 
-	- Visual Studio 2017 is required.
+	- Visual Studio 2017.3 is required.
 	- You need to install SDL2 and Boost:
 		- Get vcpkg from https://github.com/Microsoft/vcpkg
 		- Follow the instructions for bootstrap
@@ -18,7 +18,7 @@ Windows:
 	
 Linux:
 
-	- C++14 compatible compiler required
+	- GCC 7 or Clang 4 (Clang 3.9 might work too)
 	- Install SDL2 with your package manager
 	- Install Boost (1.54 or higher) with your package manager
 	- Install libpng with your package manager

@@ -26,7 +26,7 @@
 namespace GB {
 
 #define STD_REG(y)                                                                                           \
-    if (eAccess == Access::Write) {                                                                          \
+    if constexpr (eAccess == Access::Write) {                                                                          \
         y = v;                                                                                               \
     } else {                                                                                                 \
         return y;                                                                                            \
@@ -36,16 +36,13 @@ namespace GB {
 template<Access eAccess>
 u8 IO::RegAccess(System& rSystem, const u8 addr, const u8 v)
 {
-#pragma warning(push)
-#pragma warning(disable : 4127) // warning C4127: conditional expression is constant
-
     if (addr >= 0x10 && addr <= 0x3F) {
         return rSystem.m_audio.RegAccess<eAccess>(addr, v);
     }
 
     switch (addr) {
     case 0x00:
-        if (eAccess == Access::Write) {
+        if constexpr (eAccess == Access::Write) {
             P1 = v;
         } else {
             return MakeP1(rSystem);
@@ -53,7 +50,7 @@ u8 IO::RegAccess(System& rSystem, const u8 addr, const u8 v)
         break;
     case 0x01: STD_REG(SB);
     case 0x02:
-        if (eAccess == Access::Write) {
+        if constexpr (eAccess == Access::Write) {
             m_serial_clock  = (v & 1) != 0;
             m_serial_active = (v & 0x80) != 0;
             if (m_serial_active) {
@@ -64,14 +61,14 @@ u8 IO::RegAccess(System& rSystem, const u8 addr, const u8 v)
         }
         break;
     case 0x04:
-        if (eAccess == Access::Write) {
+        if constexpr (eAccess == Access::Write) {
             Divider.value = 0;
         } else {
             return Divider.details.DIV;
         }
         break;
     case 0x05:
-        if (eAccess == Access::Write) {
+        if constexpr (eAccess == Access::Write) {
             TIMA = v;
         } else {
             return TIMA;
@@ -79,7 +76,7 @@ u8 IO::RegAccess(System& rSystem, const u8 addr, const u8 v)
         break;
     case 0x06: STD_REG(TMA);
     case 0x07:
-        if (eAccess == Access::Write) {
+        if constexpr (eAccess == Access::Write) {
             SetTAC(v);
         } else {
             return TAC;
@@ -87,7 +84,7 @@ u8 IO::RegAccess(System& rSystem, const u8 addr, const u8 v)
         break;
     case 0x0f: STD_REG(rSystem.m_cpu.IF.value);
     case 0x40:
-        if (eAccess == Access::Write) {
+        if constexpr (eAccess == Access::Write) {
             if (!rSystem.m_video.LCDC.bits.lcden && (v & 0x80)) {
                 // Restart video
                 rSystem.m_video.m_mode = 1;
@@ -102,7 +99,7 @@ u8 IO::RegAccess(System& rSystem, const u8 addr, const u8 v)
         }
         break;
     case 0x41:
-        if (eAccess == Access::Write) {
+        if constexpr (eAccess == Access::Write) {
             rSystem.m_video.STAT.value = v & 0x78;
         } else {
             rSystem.m_video.UpdateSTAT();
@@ -112,14 +109,14 @@ u8 IO::RegAccess(System& rSystem, const u8 addr, const u8 v)
     case 0x42: STD_REG(rSystem.m_video.SCY);
     case 0x43: STD_REG(rSystem.m_video.SCX);
     case 0x44:
-        if (eAccess == Access::Read) {
+        if constexpr (eAccess == Access::Read) {
             return rSystem.m_video.LY;
         }
         // Writes are ignored
         break;
     case 0x45: STD_REG(rSystem.m_video.LYC);
     case 0x46:
-        if (eAccess == Access::Write) {
+        if constexpr (eAccess == Access::Write) {
             rSystem.m_cpu.m_oam_dma_active = true;
             rSystem.m_cpu.m_oam_dma_src    = v << 8;
             rSystem.m_cpu.m_oam_dma_index  = 0;
@@ -131,7 +128,7 @@ u8 IO::RegAccess(System& rSystem, const u8 addr, const u8 v)
     case 0x4A: STD_REG(rSystem.m_video.WY);
     case 0x4B: STD_REG(rSystem.m_video.WX);
     case 0x50:
-        if (eAccess == Access::Write) {
+        if constexpr (eAccess == Access::Write) {
             if (v & 1) {
                 rSystem.m_boot_rom_active = false;
             }
@@ -142,8 +139,6 @@ u8 IO::RegAccess(System& rSystem, const u8 addr, const u8 v)
     }
 
     return 0;
-
-#pragma warning(pop)
 }
 
 void IO::Reset(ResetOption)

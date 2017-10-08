@@ -43,7 +43,7 @@ set(SOURCE_FILES
 set(GCC_COMPILE_FLAGS "-Wall")
 set(GCC_LINK_FLAGS    "")
 
-set( CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${GCC_COVERAGE_COMPILE_FLAGS} -std=c++14" )
+set( CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${GCC_COVERAGE_COMPILE_FLAGS} -std=c++1z" )
 set( CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} ${GCC_COVERAGE_LINK_FLAGS}" )
 
 # the compiler flags for compiling C++ sources
@@ -51,5 +51,5 @@ MESSAGE( STATUS "CMAKE_CXX_FLAGS: " ${CMAKE_CXX_FLAGS} )
 
 add_executable(ataboy ${SOURCE_FILES})
 target_link_libraries(ataboy ${SDL2_LIBRARY} ${Boost_LIBRARIES} ${PNG_LIBRARY})
-#set_property(TARGET ataboy PROPERTY CXX_STANDARD 14)
+#set_property(TARGET ataboy PROPERTY CXX_STANDARD 17)
 

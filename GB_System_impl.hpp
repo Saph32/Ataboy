@@ -70,8 +70,6 @@ nanoseconds System::RunTime(const nanoseconds& time_to_run)
 template<Access eAccess>
 u8 System::BusAccess(u16 addr, u8 v)
 {
-#pragma warning(push)
-#pragma warning(disable : 4127) // warning C4127: conditional expression is constant
     if (addr < 0x100 && m_boot_rom_active) {
         return m_boot_ROM[addr];
     }
@@ -82,7 +80,7 @@ u8 System::BusAccess(u16 addr, u8 v)
     } else if (addr < 0xc000) {
         return m_game_pak.RAMAccess<eAccess>(addr, v);
     } else if (addr < 0xfe00) {
-        if (eAccess == Access::Write) {
+        if constexpr (eAccess == Access::Write) {
             RAM[addr & 0x1fff] = v;
         } else {
             return RAM[addr & 0x1fff];
@@ -92,7 +90,7 @@ u8 System::BusAccess(u16 addr, u8 v)
     } else if (addr < 0xff80) {
         return m_io.RegAccess<eAccess>(*this, addr & 0xff, v);
     } else {
-        if (eAccess == Access::Write) {
+        if constexpr (eAccess == Access::Write) {
             m_cpu.HRAM[addr & 0x7f] = v;
         } else {
             return m_cpu.HRAM[addr & 0x7f];
@@ -100,7 +98,6 @@ u8 System::BusAccess(u16 addr, u8 v)
     }
 
     return 0;
-#pragma warning(pop)
 }
 
 } // namespace GB

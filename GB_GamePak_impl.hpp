@@ -240,22 +240,25 @@ u8 GamePak::ROMAccess<Access::Read>(const u16 addr, const u8)
     }
 }
 
-template<Access eAccess>
-u8 GamePak::RAMAccess(const u16 addr, const u8 v)
+template<>
+u8 GamePak::RAMAccess<Access::Read>(const u16 addr, const u8)
 {
-#pragma warning(push)
-#pragma warning(disable : 4127) // warning C4127: conditional expression is constant
-
     if (m_ram_enabled) {
-        if (eAccess == Access::Write) {
-            RAM[addr & 0x1fff] = v;
-        } else {
-            return RAM[addr & 0x1fff];
-        }
+        return RAM[addr & 0x1fff];
     }
 
     return 0xFF;
-#pragma warning(pop)
 }
+
+template<>
+u8 GamePak::RAMAccess<Access::Write>(const u16 addr, const u8 v)
+{
+    if (m_ram_enabled) {
+        RAM[addr & 0x1fff] = v;
+    }
+
+    return 0;
+}
+
 
 } // namespace GB

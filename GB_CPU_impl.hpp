@@ -202,28 +202,25 @@ void CPU::ALU(System& rSystem)
 {
     AssertOp8<TOp8>();
 
-#pragma warning(push)
-#pragma warning(disable : 4127) // warning C4127: conditional expression is constant
+    constexpr bool carry = (alu == ADC || alu == SBC);
+    constexpr bool sub   = !(alu == ADD || alu == ADC);
 
-    const bool carry = (alu == ADC || alu == SBC);
-    const bool sub   = !(alu == ADD || alu == ADC);
-    size_t     t     = GetOperand8<TOp8>(rSystem);
+    size_t t = GetOperand8<TOp8>(rSystem);
 
-    if (sub) {
+    if constexpr (sub) {
         R.F.H = (((R.af8.A & 0xf) - (t & 0xf) - (carry ? R.F.C : 0)) >> 4) & 1;
         t     = R.af8.A - t - (carry ? R.F.C : 0);
     } else {
         R.F.H = ((t & 0xf) + (R.af8.A & 0xf) + (carry ? R.F.C : 0)) >> 4;
         t += R.af8.A + (carry ? R.F.C : 0);
     }
-    if (alu != CP) {
+    if constexpr (alu != CP) {
         R.af8.A = t & 0xff;
     }
     R.F.Z = ((t & 0xff) == 0) ? 1 : 0;
     R.F.C = (t >> 8) & 1;
     R.F.N = sub ? 1 : 0;
     R.PC++;
-#pragma warning(pop)
 }
 
 template<class TOp16>
@@ -264,15 +261,14 @@ void CPU::BITS(System& rSystem)
 {
     AssertOp8<TOp8>();
 
-#pragma warning(push)
-#pragma warning(disable : 4127) // warning C4127: conditional expression is constant
-    const bool z0 = (op == RLA || op == RLCA || op == RRA || op == RRCA);
-    // TODO : Test with size_t
+    constexpr bool z0 = (op == RLA || op == RLCA || op == RRA || op == RRCA);
+
+    // TODO : Test with size_t if it generates better code
     u8 t      = GetOperand8<TOp8>(rSystem);
     u8 prevFC = R.F.C;
-    if (op == RL || op == RLA || op == RLC || op == RLCA || op == SLA) {
+    if constexpr (op == RL || op == RLA || op == RLC || op == RLCA || op == SLA) {
         R.F.C = (t & 0x80) ? 1 : 0;
-    } else if (op == RR || op == RRA || op == RRC || op == RRCA || op == SRA || op == SRL) {
+    } else if constexpr (op == RR || op == RRA || op == RRC || op == RRCA || op == SRA || op == SRL) {
         R.F.C = t & 1;
     } else {
         R.F.C = 0;
@@ -297,7 +293,6 @@ void CPU::BITS(System& rSystem)
     R.F.Z = (!z0 && (t & 0xff) == 0) ? 1 : 0;
     SetOperand8<TOp8>(rSystem, t);
     R.PC++;
-#pragma warning(pop)
 }
 
 template<class TOp8, u8 bit>
@@ -388,12 +383,9 @@ void CPU::LDSPOF(System& rSystem)
     R.F.Z = 0;
     R.F.N = 0;
     rSystem.Tick();
-#pragma warning(push)
-#pragma warning(disable : 4127) // warning C4127: conditional expression is constant
-    if (TOp16::op16 == Op16::SP) {
+    if constexpr (TOp16::op16 == Op16::SP) {
         rSystem.Tick();
     }
-#pragma warning(pop)
 }
 
 void CPU::HALT(System&)
@@ -468,22 +460,18 @@ void CPU::RST(System& rSystem)
 template<class TCond>
 void CPU::RET(System& rSystem)
 {
-#pragma warning(push)
-#pragma warning(disable : 4127) // warning C4127: conditional expression is constant
-
     rSystem.Tick();
     if (CheckCondition<TCond>()) {
         R.PC = POP16(rSystem);
-        if (TCond::cond != Condition::Always && TCond::cond != Condition::RETI) {
+        if constexpr (TCond::cond != Condition::Always && TCond::cond != Condition::RETI) {
             rSystem.Tick();
         }
     } else {
         R.PC++;
     }
-    if (TCond::cond == Condition::RETI) {
+    if constexpr (TCond::cond == Condition::RETI) {
         IME = true;
     }
-#pragma warning(pop)
 }
 
 template<class TCond>

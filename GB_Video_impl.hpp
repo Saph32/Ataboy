@@ -303,34 +303,30 @@ void Video::RenderLine()
     }
 }
 
-template<Access eAccess>
-u8 Video::VRAMAccess(const u16 addr, const u8 v)
+template<>
+u8 Video::VRAMAccess<Access::Read>(const u16 addr, const u8)
 {
-#pragma warning(push)
-#pragma warning(disable : 4127) // warning C4127: conditional expression is constant
-
-    if (eAccess == Access::Write) {
-        VRAM[addr & 0x1fff] = v;
-    } else {
-        return VRAM[addr & 0x1fff];
-    }
-    return 0;
-#pragma warning(pop)
+    return VRAM[addr & 0x1fff];
 }
 
-template<Access eAccess>
-u8 Video::OAMAccess(const u8 addr, const u8 v)
+template<>
+u8 Video::VRAMAccess<Access::Write>(const u16 addr, const u8 v)
 {
-#pragma warning(push)
-#pragma warning(disable : 4127) // warning C4127: conditional expression is constant
-
-    if (eAccess == Access::Write) {
-        OAM[addr] = v;
-    } else {
-        return OAM[addr];
-    }
+    VRAM[addr & 0x1fff] = v;
     return 0;
-#pragma warning(pop)
+}
+
+template<>
+u8 Video::OAMAccess<Access::Read>(const u8 addr, const u8 )
+{
+    return OAM[addr];
+}
+
+template<>
+u8 Video::OAMAccess<Access::Write>(const u8 addr, const u8 v)
+{
+    OAM[addr] = v;
+    return 0;
 }
 
 } // namespace GB
