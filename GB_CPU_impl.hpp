@@ -1,3 +1,4 @@
+#include "GB_CPU.h"
 // Copyright (c) 2017, Jean Charles Vallieres
 // All rights reserved.
 //
@@ -129,6 +130,14 @@ template<> void CPU::SetOperand8<CPU::OpIoC>(System& rSystem, const u8 v) {WB(rS
 template<> void CPU::SetOperand8<CPU::OpHLI>(System& rSystem, const u8 v) {WB(rSystem, R.HL, v); R.HL++;}
 template<> void CPU::SetOperand8<CPU::OpHLD>(System& rSystem, const u8 v) {WB(rSystem, R.HL, v); R.HL--;}
 template<> void CPU::SetOperand8<CPU::OpIImm>(System& rSystem, const u8 v) {const u16 t = GetOperand16<OpImm16>(rSystem); WB(rSystem, t, v);}
+
+template<> bool CPU::CheckCondition<CPU::CondAlways>() const {return true;}
+template<> bool CPU::CheckCondition<CPU::CondZ>()      const {return R.F.Z != 0;}
+template<> bool CPU::CheckCondition<CPU::CondNZ>()     const {return R.F.Z == 0;}
+template<> bool CPU::CheckCondition<CPU::CondC>()      const {return R.F.C != 0;}
+template<> bool CPU::CheckCondition<CPU::CondNC>()     const {return R.F.C == 0;}
+template<> bool CPU::CheckCondition<CPU::CondRETI>()   const {return true;}
+
 // clang-format on
 
 void CPU::NOP(System&)
@@ -437,12 +446,12 @@ void CPU::POP(System& rSystem)
     R.PC++;
 }
 
-template<CPU::CondFlag con>
+template<class TCond>
 void CPU::CALL(System& rSystem)
 {
     u16 t = GetOperand16<OpImm16>(rSystem);
     R.PC++;
-    if (Condition<con>()) {
+    if (CheckCondition<TCond>()) {
         PUSH16(rSystem, R.PC);
         R.PC = t;
     }
@@ -456,32 +465,32 @@ void CPU::RST(System& rSystem)
     R.PC = addr;
 }
 
-template<CPU::CondFlag con>
+template<class TCond>
 void CPU::RET(System& rSystem)
 {
 #pragma warning(push)
 #pragma warning(disable : 4127) // warning C4127: conditional expression is constant
 
     rSystem.Tick();
-    if (Condition<con>()) {
+    if (CheckCondition<TCond>()) {
         R.PC = POP16(rSystem);
-        if (con != Always && con != RETI) {
+        if (TCond::cond != Condition::Always && TCond::cond != Condition::RETI) {
             rSystem.Tick();
         }
     } else {
         R.PC++;
     }
-    if (con == RETI) {
+    if (TCond::cond == Condition::RETI) {
         IME = true;
     }
 #pragma warning(pop)
 }
 
-template<CPU::CondFlag con>
+template<class TCond>
 void CPU::JP(System& rSystem)
 {
     const u16 t = GetOperand16<OpImm16>(rSystem);
-    if (Condition<con>()) {
+    if (CheckCondition<TCond>()) {
         R.PC = t;
         rSystem.Tick();
     } else {
@@ -489,13 +498,13 @@ void CPU::JP(System& rSystem)
     }
 }
 
-template<CPU::CondFlag con>
+template<class TCond>
 void CPU::JR(System& rSystem)
 {
     R.PC++;
     const u8 t = RB(rSystem, R.PC);
     R.PC++;
-    if (Condition<con>()) {
+    if (CheckCondition<TCond>()) {
         R.PC += reinterpret_cast<const signed char&>(t);
         rSystem.Tick();
     }
@@ -561,19 +570,7 @@ void CPU::DAA(System&)
     R.PC++;
 }
 
-template<CPU::CondFlag con>
-bool CPU::Condition() const
-{
-    switch (con) {
-    case CondZ: return (R.F.Z != 0);
-    case CondNZ: return (R.F.Z == 0);
-    case CondC: return (R.F.C != 0);
-    case CondNC: return (R.F.C == 0);
-    case RETI:
-    case Always: return true;
-    }
-    return true;
-}
+
 
 void CPU::PUSH16(System& rSystem, const u16 v)
 {
@@ -616,7 +613,7 @@ const array<CPU::OpCodeFn, 256> CPU::m_op_codes = {
     &CPU::NOP,              &CPU::LD16<OpBC>,  &CPU::LD<OpA, OpIBC>,  &CPU::INC16<OpBC>, &CPU::INC<OpB>,      &CPU::DEC<OpB>,    &CPU::LD<OpImm, OpB>,     &CPU::BITS<OpA, RLCA>,
     &CPU::LDSP,             &CPU::ADDHL<OpBC>, &CPU::LD<OpIBC, OpA>,  &CPU::DEC16<OpBC>, &CPU::INC<OpC>,      &CPU::DEC<OpC>,    &CPU::LD<OpImm, OpC>,     &CPU::BITS<OpA, RRCA>,
     &CPU::STOP,             &CPU::LD16<OpDE>,  &CPU::LD<OpA, OpIDE>,  &CPU::INC16<OpDE>, &CPU::INC<OpD>,      &CPU::DEC<OpD>,    &CPU::LD<OpImm, OpD>,     &CPU::BITS<OpA, RLA>,
-    &CPU::JR<Always>,       &CPU::ADDHL<OpDE>, &CPU::LD<OpIDE, OpA>,  &CPU::DEC16<OpDE>, &CPU::INC<OpE>,      &CPU::DEC<OpE>,    &CPU::LD<OpImm, OpE>,     &CPU::BITS<OpA, RRA>,
+    &CPU::JR<CondAlways>,   &CPU::ADDHL<OpDE>, &CPU::LD<OpIDE, OpA>,  &CPU::DEC16<OpDE>, &CPU::INC<OpE>,      &CPU::DEC<OpE>,    &CPU::LD<OpImm, OpE>,     &CPU::BITS<OpA, RRA>,
     &CPU::JR<CondNZ>,       &CPU::LD16<OpHL>,  &CPU::LD<OpA, OpHLI>,  &CPU::INC16<OpHL>, &CPU::INC<OpH>,      &CPU::DEC<OpH>,    &CPU::LD<OpImm, OpH>,     &CPU::DAA,
     &CPU::JR<CondZ>,        &CPU::ADDHL<OpHL>, &CPU::LD<OpHLI, OpA>,  &CPU::DEC16<OpHL>, &CPU::INC<OpL>,      &CPU::DEC<OpL>,    &CPU::LD<OpImm, OpL>,     &CPU::CPL,
     &CPU::JR<CondNC>,       &CPU::LD16<OpSP>,  &CPU::LD<OpA, OpHLD>,  &CPU::INC16<OpSP>, &CPU::INC<OpIHL>,    &CPU::DEC<OpIHL>,  &CPU::LD<OpImm, OpIHL>,   &CPU::SCF,
@@ -637,14 +634,14 @@ const array<CPU::OpCodeFn, 256> CPU::m_op_codes = {
     STD_OPERANDS(&CPU::BITW, XOR),
     STD_OPERANDS(&CPU::BITW, OR),
     STD_OPERANDS(&CPU::ALU, CP),
-    &CPU::RET<CondNZ>,      &CPU::POP<OpBC>,   &CPU::JP<CondNZ>,      &CPU::JP<Always>, &CPU::CALL<CondNZ>,  &CPU::PUSH<OpBC>,   &CPU::ALU<OpImm, ADD>,    &CPU::RST<0x00>,
-    &CPU::RET<CondZ>,       &CPU::RET<Always>, &CPU::JP<CondZ>,       &CPU::CB,         &CPU::CALL<CondZ>,   &CPU::CALL<Always>, &CPU::ALU<OpImm, ADC>,    &CPU::RST<0x08>,
-    &CPU::RET<CondNC>,      &CPU::POP<OpDE>,   &CPU::JP<CondNC>,      &CPU::NOP,        &CPU::CALL<CondNC>,  &CPU::PUSH<OpDE>,   &CPU::ALU<OpImm, SUB>,    &CPU::RST<0x10>,
-    &CPU::RET<CondC>,       &CPU::RET<RETI>,   &CPU::JP<CondC>,       &CPU::NOP,        &CPU::CALL<CondC>,   &CPU::NOP,          &CPU::ALU<OpImm, SBC>,    &CPU::RST<0x18>,
-    &CPU::LD<OpA, OpIoImm>, &CPU::POP<OpHL>,   &CPU::LD<OpA, OpIoC>,  &CPU::NOP,        &CPU::NOP,           &CPU::PUSH<OpHL>,   &CPU::BITW<OpImm, AND>,   &CPU::RST<0x20>,
-    &CPU::LDSPOF<OpSP>,     &CPU::JPHL,        &CPU::LD<OpA, OpIImm>, &CPU::NOP,        &CPU::NOP,           &CPU::NOP,          &CPU::BITW<OpImm, XOR>,   &CPU::RST<0x28>,
-    &CPU::LD<OpIoImm, OpA>, &CPU::POP<OpAF>,   &CPU::LD<OpIoC, OpA>,  &CPU::DI,         &CPU::NOP,           &CPU::PUSH<OpAF>,   &CPU::BITW<OpImm, OR>,    &CPU::RST<0x30>,
-    &CPU::LDSPOF<OpHL>,     &CPU::LDSPHL,      &CPU::LD<OpIImm, OpA>, &CPU::EI,         &CPU::NOP,           &CPU::NOP,          &CPU::ALU<OpImm, CP>,     &CPU::RST<0x38>,
+    &CPU::RET<CondNZ>,      &CPU::POP<OpBC>,       &CPU::JP<CondNZ>,      &CPU::JP<CondAlways>, &CPU::CALL<CondNZ>,  &CPU::PUSH<OpBC>,       &CPU::ALU<OpImm, ADD>,    &CPU::RST<0x00>,
+    &CPU::RET<CondZ>,       &CPU::RET<CondAlways>, &CPU::JP<CondZ>,       &CPU::CB,             &CPU::CALL<CondZ>,   &CPU::CALL<CondAlways>, &CPU::ALU<OpImm, ADC>,    &CPU::RST<0x08>,
+    &CPU::RET<CondNC>,      &CPU::POP<OpDE>,       &CPU::JP<CondNC>,      &CPU::NOP,            &CPU::CALL<CondNC>,  &CPU::PUSH<OpDE>,       &CPU::ALU<OpImm, SUB>,    &CPU::RST<0x10>,
+    &CPU::RET<CondC>,       &CPU::RET<CondRETI>,   &CPU::JP<CondC>,       &CPU::NOP,            &CPU::CALL<CondC>,   &CPU::NOP,              &CPU::ALU<OpImm, SBC>,    &CPU::RST<0x18>,
+    &CPU::LD<OpA, OpIoImm>, &CPU::POP<OpHL>,       &CPU::LD<OpA, OpIoC>,  &CPU::NOP,            &CPU::NOP,           &CPU::PUSH<OpHL>,       &CPU::BITW<OpImm, AND>,   &CPU::RST<0x20>,
+    &CPU::LDSPOF<OpSP>,     &CPU::JPHL,            &CPU::LD<OpA, OpIImm>, &CPU::NOP,            &CPU::NOP,           &CPU::NOP,              &CPU::BITW<OpImm, XOR>,   &CPU::RST<0x28>,
+    &CPU::LD<OpIoImm, OpA>, &CPU::POP<OpAF>,       &CPU::LD<OpIoC, OpA>,  &CPU::DI,             &CPU::NOP,           &CPU::PUSH<OpAF>,       &CPU::BITW<OpImm, OR>,    &CPU::RST<0x30>,
+    &CPU::LDSPOF<OpHL>,     &CPU::LDSPHL,          &CPU::LD<OpIImm, OpA>, &CPU::EI,             &CPU::NOP,           &CPU::NOP,              &CPU::ALU<OpImm, CP>,     &CPU::RST<0x38>,
 };
 
 const array<CPU::OpCodeFn, 256> CPU::m_op_codes_CB = {

@@ -114,7 +114,30 @@ public:
     enum OpALU { ADD, ADC, SUB, SBC, CP };
     enum OpBITW { AND, OR, XOR };
     enum OpBITS { RL, RLA, RLC, RLCA, RR, RRA, RRC, RRCA, SLA, SRA, SRL, SWP };
-    enum CondFlag { Always, CondZ, CondNZ, CondC, CondNC, RETI };
+
+    enum class Condition {
+        Always, // Always execute
+        Z,      // Execute if zero flag = 1
+        NZ,     // Execute if zero flag = 0
+        C,      // Execute if condition flag = 1
+        NC,     // Execute if consition flag = 0
+        RETI    // Execute from a RETI instruction
+    };
+
+    struct CondType {
+    };
+
+#define DEFINE_COND_TYPE(x)                                                                                  \
+    struct Cond##x : public CondType {                                                                       \
+        static constexpr auto cond = Condition::x;                                                                \
+    };
+
+    DEFINE_COND_TYPE(Always);
+    DEFINE_COND_TYPE(Z);
+    DEFINE_COND_TYPE(NZ);
+    DEFINE_COND_TYPE(C);
+    DEFINE_COND_TYPE(NC);
+    DEFINE_COND_TYPE(RETI);
 
     typedef void (CPU::*OpCodeFn)(System&);
 
@@ -176,6 +199,8 @@ public:
     template<class Op16T> u16  GetOperand16(System& rSystem);
     template<class Op16T> void SetOperand16(const u16 v);
 
+    template<class CondT> bool CheckCondition() const;
+
     void NOP(System& rSystem);
 
     template<class Op8T>                   void INC(System& rSystem);
@@ -201,13 +226,13 @@ public:
     void SCF(System& rSystem);
     void CCF(System& rSystem);
 
-    template<class Op16T>  void PUSH(System& rSystem);
-    template<class Op16T>  void POP(System& rSystem);
-    template<CondFlag con> void CALL(System& rSystem);
-    template<u8 addr>      void RST(System& rSystem);
-    template<CondFlag con> void RET(System& rSystem);
-    template<CondFlag con> void JP(System& rSystem);
-    template<CondFlag con> void JR(System& rSystem);
+    template<class Op16T>        void PUSH(System& rSystem);
+    template<class Op16T>        void POP(System& rSystem);
+    template<class CondType>     void CALL(System& rSystem);
+    template<u8 addr>            void RST(System& rSystem);
+    template<class CondType>     void RET(System& rSystem);
+    template<class CondType>     void JP(System& rSystem);
+    template<class CondType>     void JR(System& rSystem);
 
     void JPHL(System& rSystem);
     void EI(System& rSystem);
@@ -216,8 +241,6 @@ public:
     void DAA(System& rSystem);
     void PUSH16(System& rSystem, const u16 v);
     u16  POP16(System& rSystem);
-
-    template<CondFlag con> bool Condition() const;
     // clang-format on
 
     void DoOAMDMA(System& rSystem);
