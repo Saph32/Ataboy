@@ -42,6 +42,7 @@
 
 #include "FileIo.h"
 #include "ImageIo.h"
+#include "ProgramOptions.h"
 
 using namespace std;
 using namespace std::chrono;
@@ -116,14 +117,15 @@ struct AudioContext {
 };
 
 enum ReturnCode : int {
-    ReturnCode_OK                 = 0,
-    ReturnCode_INVALID_ROM_FILE   = 1,
-    ReturnCode_INVALID_SAVE_FILE  = 2,
-    ReturnCode_INVALID_BOOT_ROM   = 3,
-    ReturnCode_SDL_WINDOW_ERROR   = 4,
-    ReturnCode_SDL_RENDERER_ERROR = 5,
-    ReturnCode_SDL_TEXTURE_ERROR  = 6,
-    ReturnCode_SDL_AUDIO_ERROR    = 7,
+    ReturnCode_OK                           = 0,
+    ReturnCode_INVALID_ROM_FILE             = 1,
+    ReturnCode_INVALID_SAVE_FILE            = 2,
+    ReturnCode_INVALID_BOOT_ROM             = 3,
+    ReturnCode_SDL_WINDOW_ERROR             = 4,
+    ReturnCode_SDL_RENDERER_ERROR           = 5,
+    ReturnCode_SDL_TEXTURE_ERROR            = 6,
+    ReturnCode_SDL_AUDIO_ERROR              = 7,
+    ReturnCode_COMMAND_LINE_PARAMETER_ERROR = 8,
 };
 
 void SDLAudioCallback(void* userdata, Uint8* stream, int len)
@@ -170,23 +172,26 @@ void SDLAudioCallback(void* userdata, Uint8* stream, int len)
 
 int main(int argc, char* argv[])
 {
-    (void)argc;
-    (void)argv;
+    auto upProg_opts = ParseCommandLine(argc, argv);
 
-    bool use_SDL                 = true;
-    bool use_vsync               = true;
-    bool save_screenshot_on_exit = false;
-    int  speed_factor            = 1; // 0 = unlimited
+    if (!upProg_opts) {
+        return ReturnCode_COMMAND_LINE_PARAMETER_ERROR;
+    }
 
-    int run_frame_count = 0;
+    const auto& rProg_opts = *upProg_opts; 
+
+    const bool use_SDL   = rProg_opts.use_SDL;
+    const bool use_vsync = rProg_opts.use_vsync;
+    const bool save_screenshot_on_exit = rProg_opts.save_screenshot_on_exit;
+
+    const uint64_t run_frame_count = rProg_opts.run_frame_count; // 0 = unlimited
+
+    const double speed_factor = rProg_opts.speed_factor; // 0 = unlimited
 
     // const char* boot_rom_file_name = R"(D:\emu\gb\DMG_ROM.bin)";
-    const char* boot_rom_file_name = nullptr;
+    const string boot_rom_file_name = rProg_opts.boot_ROM_file;
+    const char*  file_name          = rProg_opts.ROM_file.c_str();
 
-    const char* file_name = nullptr;
-    if (argc > 1) {
-        file_name = argv[1];
-    }
     // file_name = R"(D:\emu\gb\PD\Dan Laser Demo (PD).gb)";
     // file_name = R"(D:\emu\gb\PD\MegAnime by Megaman_X (PD).gb)";
     // file_name = R"(D:\emu\gb\PD\Apocalypse Now Demo (PD).gb)";
@@ -293,8 +298,9 @@ int main(int argc, char* argv[])
         return ReturnCode_INVALID_ROM_FILE;
     }
 
-    if (boot_rom_file_name) {
-        const vector<char> boot_rom = LoadFile(boot_rom_file_name);
+    const bool use_boot_rom = !boot_rom_file_name.empty();
+    if (use_boot_rom) {
+        const vector<char> boot_rom = LoadFile(boot_rom_file_name.c_str());
 
         if (boot_rom.size() != 256) {
             return ReturnCode_INVALID_BOOT_ROM;
@@ -305,7 +311,7 @@ int main(int argc, char* argv[])
 
     const GB::ROM_Header& rHeader = gb.RefHeader();
 
-    gb.Reset(boot_rom_file_name ? GB::ResetOption_USE_BOOT_ROM : GB::ResetOption_NONE);
+    gb.Reset(use_boot_rom ? GB::ResetOption_USE_BOOT_ROM : GB::ResetOption_NONE);
 
     string save_filename;
     if (rHeader.RAM_size > 0) {
@@ -326,7 +332,7 @@ int main(int argc, char* argv[])
         }
     }
 
-    const int zoom = 4;
+    const uint32_t zoom = rProg_opts.video_scale;
 
     AudioContext audio_context = {};
 
@@ -523,9 +529,17 @@ int main(int argc, char* argv[])
                 elapsed = MAX_SKIP_TIME;
             }
 
-            const auto emu_elapsed = gb.RunTime(duration_cast<nanoseconds>(elapsed) * speed_factor);
+            const nanoseconds elapsed_ns = duration_cast<nanoseconds>(elapsed);
 
-            run_time += emu_elapsed / speed_factor;
+            const auto elapsed_gb_time =
+                nanoseconds(static_cast<uint64_t>(elapsed_ns.count() * speed_factor));
+
+            const auto emu_elapsed = gb.RunTime(elapsed_gb_time);
+
+            const auto emu_alapsed_clock_time =
+                nanoseconds(static_cast<uint64_t>(emu_elapsed.count() / speed_factor));
+
+            run_time += emu_alapsed_clock_time;
 
             if (start_time + seconds(1) < time_now) {
                 const duration<float> fsec = time_now - start_time;

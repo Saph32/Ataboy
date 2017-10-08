@@ -14,6 +14,8 @@ INCLUDE_DIRECTORIES( ${Boost_INCLUDE_DIR} )
 find_package(PNG REQUIRED)
 include_directories(${PNG_INCLUDE_DIR})
 
+include_directories(${PROJECT_SOURCE_DIR}/extern/cxxopts)
+
 set(SOURCE_FILES
     Main.cpp
     GB.cpp
@@ -33,7 +35,10 @@ set(SOURCE_FILES
     FileIo.h
 	ImageIo.cpp
 	ImageIo.h
-	at_scope_exit.h)
+	at_scope_exit.h
+	ProgramOptions.h
+	ProgramOptions.cpp
+	extern/cxxopts/cxxopts.hpp)
 
 set(GCC_COMPILE_FLAGS "-Wall")
 set(GCC_LINK_FLAGS    "")
