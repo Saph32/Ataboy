@@ -18,7 +18,7 @@ Windows:
 	
 Linux:
 
-	- GCC 7 or Clang 4 (Clang 3.9 might work too)
+	- GCC 7 or Clang 5
 	- Install SDL2 with your package manager
 	- Install Boost (1.54 or higher) with your package manager
 	- Install libpng with your package manager
