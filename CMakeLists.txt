@@ -14,7 +14,7 @@ INCLUDE_DIRECTORIES( ${Boost_INCLUDE_DIR} )
 find_package(PNG REQUIRED)
 include_directories(${PNG_INCLUDE_DIR})
 
-include_directories(${PROJECT_SOURCE_DIR}/extern/cxxopts)
+include_directories(${PROJECT_SOURCE_DIR}/extern)
 
 set(SOURCE_FILES
     Main.cpp
