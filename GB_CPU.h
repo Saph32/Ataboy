@@ -78,6 +78,11 @@ public:
     DEFINE_OP8_TYPE(HLD);
     DEFINE_OP8_TYPE(IImm);
 
+    template<class T>
+    constexpr static void AssertOp8() {
+        static_assert(std::is_base_of<Op8Type, T>::value, "Parameter type is not Op8.");
+    }
+
     enum class Op16 {
         BC,    // Register BC
         DE,    // Register DE
@@ -100,6 +105,11 @@ public:
     DEFINE_OP16_TYPE(SP);
     DEFINE_OP16_TYPE(AF);
     DEFINE_OP16_TYPE(Imm16);
+
+    template<class T>
+    constexpr static void AssertOp16() {
+        static_assert(std::is_base_of<Op16Type, T>::value, "Parameter type is not Op16.");
+    }
 
     enum OpALU { ADD, ADC, SUB, SBC, CP };
     enum OpBITW { AND, OR, XOR };

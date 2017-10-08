@@ -139,6 +139,8 @@ void CPU::NOP(System&)
 template<class TOp8>
 void CPU::INC(System& rSystem)
 {
+    AssertOp8<TOp8>();
+
     u8 t  = GetOperand8<TOp8>(rSystem);
     R.F.H = ((t & 0xf) == 0xf) ? 1 : 0;
     t     = (t + 1) & 0xff;
@@ -151,6 +153,8 @@ void CPU::INC(System& rSystem)
 template<class TOp16>
 void CPU::INC16(System& rSystem)
 {
+    AssertOp16<TOp16>();
+
     u16 t = GetOperand16<TOp16>(rSystem);
     t     = t + 1;
     SetOperand16<TOp16>(t);
@@ -161,6 +165,8 @@ void CPU::INC16(System& rSystem)
 template<class TOp16>
 void CPU::DEC16(System& rSystem)
 {
+    AssertOp16<TOp16>();
+
     u16 t = GetOperand16<TOp16>(rSystem);
     t     = t - 1;
     SetOperand16<TOp16>(t);
@@ -171,6 +177,8 @@ void CPU::DEC16(System& rSystem)
 template<class TOp8>
 void CPU::DEC(System& rSystem)
 {
+    AssertOp8<TOp8>();
+
     u8 t  = GetOperand8<TOp8>(rSystem);
     R.F.H = ((t & 0xf) == 0) ? 1 : 0;
     t     = (t - 1) & 0xff;
@@ -183,6 +191,8 @@ void CPU::DEC(System& rSystem)
 template<class TOp8, CPU::OpALU alu>
 void CPU::ALU(System& rSystem)
 {
+    AssertOp8<TOp8>();
+
 #pragma warning(push)
 #pragma warning(disable : 4127) // warning C4127: conditional expression is constant
 
@@ -210,6 +220,8 @@ void CPU::ALU(System& rSystem)
 template<class TOp16>
 void CPU::ADDHL(System& rSystem)
 {
+    AssertOp16<TOp16>();
+
     size_t t = GetOperand16<TOp16>(rSystem);
     R.F.H    = ((R.HL & 0x0fff) + (t & 0x0fff) > 0x0fff) ? 1 : 0;
     t += R.HL;
@@ -223,6 +235,8 @@ void CPU::ADDHL(System& rSystem)
 template<class TOp8, CPU::OpBITW op>
 void CPU::BITW(System& rSystem)
 {
+    AssertOp8<TOp8>();
+
     u8 t = GetOperand8<TOp8>(rSystem);
     switch (op) {
     case AND: R.af8.A &= t; break;
@@ -239,6 +253,8 @@ void CPU::BITW(System& rSystem)
 template<class TOp8, CPU::OpBITS op>
 void CPU::BITS(System& rSystem)
 {
+    AssertOp8<TOp8>();
+
 #pragma warning(push)
 #pragma warning(disable : 4127) // warning C4127: conditional expression is constant
     const bool z0 = (op == RLA || op == RLCA || op == RRA || op == RRCA);
@@ -278,6 +294,8 @@ void CPU::BITS(System& rSystem)
 template<class TOp8, u8 bit>
 void CPU::SET(System& rSystem)
 {
+    AssertOp8<TOp8>();
+
     SetOperand8<TOp8>(rSystem, GetOperand8<TOp8>(rSystem) | (1 << bit));
     R.PC++;
 }
@@ -285,6 +303,8 @@ void CPU::SET(System& rSystem)
 template<class TOp8, u8 bit>
 void CPU::RES(System& rSystem)
 {
+    AssertOp8<TOp8>();
+
     SetOperand8<TOp8>(rSystem, GetOperand8<TOp8>(rSystem) & (~(1 << bit)));
     R.PC++;
 }
@@ -292,6 +312,8 @@ void CPU::RES(System& rSystem)
 template<class TOp8, u8 bit>
 void CPU::BIT(System& rSystem)
 {
+    AssertOp8<TOp8>();
+
     R.F.N = 0;
     R.F.H = 1;
     R.F.Z = (GetOperand8<TOp8>(rSystem) & (1 << bit)) ? 0 : 1;
@@ -307,14 +329,19 @@ void CPU::LD<CPU::OpIHL, CPU::OpIHL>(System& rSystem)
 template<class TOpSrc8, class TOpDst8>
 void CPU::LD(System& rSystem)
 {
+    AssertOp8<TOpSrc8>();
+    AssertOp8<TOpDst8>();
+
     SetOperand8<TOpDst8>(rSystem, GetOperand8<TOpSrc8>(rSystem));
     R.PC++;
 }
 
-template<class TOp16>
+template<class Op16DstT>
 void CPU::LD16(System& rSystem)
 {
-    SetOperand16<TOp16>(GetOperand16<OpImm16>(rSystem));
+    AssertOp16<Op16DstT>();
+
+    SetOperand16<Op16DstT>(GetOperand16<OpImm16>(rSystem));
     R.PC++;
 }
 
@@ -337,6 +364,8 @@ void CPU::LDSPHL(System& rSystem)
 template<class TOp16>
 void CPU::LDSPOF(System& rSystem)
 {
+    AssertOp16<TOp16>();
+
     R.PC++;
     const u8   tu = RB(rSystem, R.PC);
     const auto t  = reinterpret_cast<const signed char&>(tu);
@@ -393,6 +422,8 @@ void CPU::CCF(System&)
 template<class TOp16>
 void CPU::PUSH(System& rSystem)
 {
+    AssertOp16<TOp16>();
+
     PUSH16(rSystem, GetOperand16<TOp16>(rSystem));
     R.PC++;
 }
@@ -400,6 +431,8 @@ void CPU::PUSH(System& rSystem)
 template<class TOp16>
 void CPU::POP(System& rSystem)
 {
+    AssertOp16<TOp16>();
+
     SetOperand16<TOp16>(POP16(rSystem));
     R.PC++;
 }
