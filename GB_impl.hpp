@@ -78,7 +78,6 @@ const u32* GB::GetPixels() const
 void GB::UpdateKeys(const Keys& rKeys)
 {
     m_pSystem->m_io.m_keys = rKeys;
-    m_pSystem->m_io.MakeP1(*m_pSystem);
 }
 
 const AudioSample* GB::GetAudioBuf() const

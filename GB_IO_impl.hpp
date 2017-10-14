@@ -43,7 +43,8 @@ u8 IO::RegAccess(System& rSystem, const u8 addr, const u8 v)
     switch (addr) {
     case 0x00:
         if constexpr (eAccess == Access::Write) {
-            P1 = v;
+            P1.detail.dpad    = (v & 0x10) ? 1 : 0;
+            P1.detail.buttons = (v & 0x20) ? 1 : 0;
         } else {
             return MakeP1(rSystem);
         }
@@ -148,8 +149,8 @@ void IO::Reset(ResetOption)
     TMA             = 0;
     TAC             = 0xF8;
     m_timer_mask    = 255;
-    P1              = 0x0f;
-    m_keys.value    = 0xff;
+    P1.value        = 0xff;
+    m_keys.value    = 0x00;
     m_serial_active = false;
     m_serial_bits   = 0;
     m_serial_clock  = false;
@@ -184,19 +185,21 @@ void IO::Tick(System& rSystem)
 
 u8 IO::MakeP1(System& rSystem)
 {
-    const u8 prev_P1  = P1;
-    u8       keys_val = 0xf;
-    if (P1 & 0x20) {
-        keys_val = keys_val & m_keys.value;
+    u8 keys = 0xf;
+
+    if (!P1.detail.dpad) {
+        keys = keys & (~m_keys.detail.dpad.value);
     }
-    if (P1 & 0x10) {
-        keys_val = keys_val & (m_keys.value >> 4);
+    if (!P1.detail.buttons) {
+        keys = keys & (~m_keys.detail.buttons.value);
     }
-    P1 = (P1 & 0x30) | keys_val | 0xc0;
-    if (prev_P1 & (~P1) & 0xf) {
+
+    P1.detail.keys = keys;
+
+    if ((~P1.value) & 0xf) {
         rSystem.m_cpu.IF.f.joypad = 1;
     }
-    return P1;
+    return P1.value;
 }
 
 void IO::SetTAC(u8 val)

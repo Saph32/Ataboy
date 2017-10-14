@@ -32,7 +32,16 @@ namespace GB {
 
 class IO {
 public:
-    u8 P1 = 0;
+    union {
+        struct Detail {
+            u8 keys : 4;
+            u8 buttons : 1;
+            u8 dpad : 1;
+            u8 ignored : 2;
+        } detail;
+        u8 value = 0xFF;
+    } P1 = {};
+
     u8 SB = 0;
     u8 SC = 0;
     union {

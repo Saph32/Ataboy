@@ -47,17 +47,27 @@ struct ROM_Header {
 class System;
 
 union Keys {
-    struct k {
-        u8 right : 1;
-        u8 left : 1;
-        u8 up : 1;
-        u8 down : 1;
-        u8 a : 1;
-        u8 b : 1;
-        u8 select : 1;
-        u8 start : 1;
-    } k;
-    u8 value = 0;
+    struct Detail {
+        union Dpad {
+            struct Detail {
+                u8 right : 1;
+                u8 left : 1;
+                u8 up : 1;
+                u8 down : 1;
+            } detail;
+            u8 value;
+        } dpad;
+        union Buttons {
+            struct Detail {
+                u8 a : 1;
+                u8 b : 1;
+                u8 select : 1;
+                u8 start : 1;
+            } detail;
+            u8 value;
+        } buttons;
+    } detail;
+    u16 value = 0;
 };
 
 struct AudioSample {

@@ -97,7 +97,9 @@ u8 System::BusAccess(u16 addr, u8 v)
         }
     }
 
-    return 0;
+    if constexpr (eAccess == Access::Write) {
+        return 0;
+    }
 }
 
 } // namespace GB

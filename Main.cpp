@@ -69,31 +69,21 @@ Action PollEvents()
     switch (event.type) {
     case SDL_QUIT: eAction = Action::Quit; break;
     case SDL_KEYDOWN:
+    case SDL_KEYUP: {
+        const unsigned int value = (event.type == SDL_KEYDOWN) ? 1 : 0;
         switch (event.key.keysym.sym) {
-        case SDLK_LEFT: g_keys.k.left = 0; break;
-        case SDLK_RIGHT: g_keys.k.right = 0; break;
-        case SDLK_UP: g_keys.k.up = 0; break;
-        case SDLK_DOWN: g_keys.k.down = 0; break;
-        case SDLK_z: g_keys.k.b = 0; break;
-        case SDLK_x: g_keys.k.a = 0; break;
-        case SDLK_c: g_keys.k.select = 0; break;
-        case SDLK_v: g_keys.k.start = 0; break;
+        case SDLK_LEFT: g_keys.detail.dpad.detail.left = value; break;
+        case SDLK_RIGHT: g_keys.detail.dpad.detail.right = value; break;
+        case SDLK_UP: g_keys.detail.dpad.detail.up = value; break;
+        case SDLK_DOWN: g_keys.detail.dpad.detail.down = value; break;
+        case SDLK_z: g_keys.detail.buttons.detail.b = value; break;
+        case SDLK_x: g_keys.detail.buttons.detail.a = value; break;
+        case SDLK_c: g_keys.detail.buttons.detail.select = value; break;
+        case SDLK_v: g_keys.detail.buttons.detail.start = value; break;
         };
         eAction = Action::KeyUpdate;
         break;
-    case SDL_KEYUP:
-        switch (event.key.keysym.sym) {
-        case SDLK_LEFT: g_keys.k.left = 1; break;
-        case SDLK_RIGHT: g_keys.k.right = 1; break;
-        case SDLK_UP: g_keys.k.up = 1; break;
-        case SDLK_DOWN: g_keys.k.down = 1; break;
-        case SDLK_z: g_keys.k.b = 1; break;
-        case SDLK_x: g_keys.k.a = 1; break;
-        case SDLK_c: g_keys.k.select = 1; break;
-        case SDLK_v: g_keys.k.start = 1; break;
-        }
-        eAction = Action::KeyUpdate;
-        break;
+    }
     case SDL_CONTROLLERBUTTONUP:
     case SDL_CONTROLLERBUTTONDOWN:
     case SDL_CONTROLLERAXISMOTION: eAction = Action::JoyUpdate; break;
@@ -434,33 +424,40 @@ int main(int argc, char* argv[])
 
                 if (eAction == Action::JoyUpdate && controller) {
                     auto prev_keys = g_keys;
-#define CHECK_BUTTON(x, y)                                                                                   \
-    if (SDL_GameControllerGetButton(controller, x)) {                                                        \
-        y = 0;                                                                                               \
-    } else {                                                                                                 \
-        y = 1;                                                                                               \
-    }
-                    CHECK_BUTTON(SDL_CONTROLLER_BUTTON_DPAD_LEFT, g_keys.k.left);
-                    CHECK_BUTTON(SDL_CONTROLLER_BUTTON_DPAD_RIGHT, g_keys.k.right);
-                    CHECK_BUTTON(SDL_CONTROLLER_BUTTON_DPAD_UP, g_keys.k.up);
-                    CHECK_BUTTON(SDL_CONTROLLER_BUTTON_DPAD_DOWN, g_keys.k.down);
-                    CHECK_BUTTON(SDL_CONTROLLER_BUTTON_A, g_keys.k.a);
-                    CHECK_BUTTON(SDL_CONTROLLER_BUTTON_X, g_keys.k.b);
-                    CHECK_BUTTON(SDL_CONTROLLER_BUTTON_START, g_keys.k.start);
-                    CHECK_BUTTON(SDL_CONTROLLER_BUTTON_BACK, g_keys.k.select);
+
+                    auto fnCheckButton = [&](auto eButton, auto fnOut) {
+                        if (SDL_GameControllerGetButton(controller, eButton)) {                                                        
+                            fnOut(1);                                                                                               
+                        } else {                                                                                                 
+                            fnOut(0);                                                                                               
+                        }
+                    };
+
+#define SET_BIT(x) [](auto val) {x = val;}
+
+                    fnCheckButton(SDL_CONTROLLER_BUTTON_DPAD_LEFT, SET_BIT(g_keys.detail.dpad.detail.left));
+                    fnCheckButton(SDL_CONTROLLER_BUTTON_DPAD_RIGHT, SET_BIT(g_keys.detail.dpad.detail.right));
+                    fnCheckButton(SDL_CONTROLLER_BUTTON_DPAD_UP, SET_BIT(g_keys.detail.dpad.detail.up));
+                    fnCheckButton(SDL_CONTROLLER_BUTTON_DPAD_DOWN, SET_BIT(g_keys.detail.dpad.detail.down));
+                    fnCheckButton(SDL_CONTROLLER_BUTTON_A, SET_BIT(g_keys.detail.buttons.detail.a));
+                    fnCheckButton(SDL_CONTROLLER_BUTTON_X, SET_BIT(g_keys.detail.buttons.detail.b));
+                    fnCheckButton(SDL_CONTROLLER_BUTTON_START, SET_BIT(g_keys.detail.buttons.detail.start));
+                    fnCheckButton(SDL_CONTROLLER_BUTTON_BACK, SET_BIT(g_keys.detail.buttons.detail.select));
+
+#undef SET_BIT
 
                     const auto x_axis = SDL_GameControllerGetAxis(controller, SDL_CONTROLLER_AXIS_LEFTX);
                     if (x_axis < -JOYSTICK_DEAD_ZONE) {
-                        g_keys.k.left = 0;
+                        g_keys.detail.dpad.detail.left = 1;
                     } else if (x_axis > JOYSTICK_DEAD_ZONE) {
-                        g_keys.k.right = 0;
+                        g_keys.detail.dpad.detail.right = 1;
                     }
 
                     const auto y_axis = SDL_GameControllerGetAxis(controller, SDL_CONTROLLER_AXIS_LEFTY);
                     if (y_axis < -JOYSTICK_DEAD_ZONE) {
-                        g_keys.k.up = 0;
+                        g_keys.detail.dpad.detail.up = 1;
                     } else if (y_axis > JOYSTICK_DEAD_ZONE) {
-                        g_keys.k.down = 0;
+                        g_keys.detail.dpad.detail.down = 1;
                     }
 
                     if (prev_keys.value != g_keys.value) {
