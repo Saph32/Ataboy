@@ -246,7 +246,8 @@ void Video::RenderLine()
                                    static_cast<u8>((OBP1 >> 6) & 3)};
 
             // Sprite
-            for (u8 spridx = 0; spridx < sprcacheidx; spridx += 4) {
+            for (u8 idx = 0; idx < sprcacheidx; idx += 4) {
+                const u8 spridx = sprcacheidx - idx - 4;    // Lower index have higher priority
                 const u8 attrib = sprcache[spridx + 1];
                 if ((step == RenderStepSpritesBehind && (attrib & 0x80)) ||
                     (step == RenderStepSpritesOver && !(attrib & 0x80))) {
