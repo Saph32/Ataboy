@@ -184,9 +184,15 @@ void Video::RenderLine()
         return;
     }
 
-    u8 sprcache[40];
-    u8 sprcacheidx     = 0;
-    u8 lastsprcacheidx = 0;
+    struct SpriteCache {
+        u8  x      = 0;
+        u8  attrib = 0;
+        u16 data   = 0;
+    };
+
+    array<SpriteCache, 10> sprcache = {};
+
+    u32 sprcacheidx = 0;
 
     const u8 sprsize = LCDC.bits.objsize ? 16 : 8;
 
@@ -213,15 +219,19 @@ void Video::RenderLine()
                     data = ((data & 0x0f0f) << 4) | ((data & 0xf0f0) >> 4);
                     data = ((data & 0x00ff) << 8) | ((data & 0xff00) >> 8);
                 }
-                sprcache[sprcacheidx] = OAM[spridx + 1];
-                sprcacheidx++;
-                sprcache[sprcacheidx] = attrib;
-                sprcacheidx++;
-                *(u16*)(&sprcache[sprcacheidx]) = data;
-                sprcacheidx += 2;
-                lastsprcacheidx = sprcacheidx;
-                if (sprcacheidx == 40)
+
+                SpriteCache& roCache = sprcache[sprcacheidx];
+
+                roCache.x      = OAM[spridx + 1];
+                roCache.attrib = attrib;
+                roCache.data   = data;
+
+                ++sprcacheidx;
+
+                if (sprcacheidx >= sprcache.size())
+                {
                     break;
+                }
             }
         }
     }
@@ -246,14 +256,15 @@ void Video::RenderLine()
                                    static_cast<u8>((OBP1 >> 6) & 3)};
 
             // Sprite
-            for (u8 idx = 0; idx < sprcacheidx; idx += 4) {
-                const u8 spridx = sprcacheidx - idx - 4;    // Lower index have higher priority
-                const u8 attrib = sprcache[spridx + 1];
+            for (u8 idx = 0; idx < sprcacheidx; ++idx) {
+                const u32 spridx = sprcacheidx - idx - 1;    // Lower index have higher priority
+                const SpriteCache& roCache = sprcache[spridx];
+                const u8 attrib = roCache.attrib;
                 if ((step == RenderStepSpritesBehind && (attrib & 0x80)) ||
                     (step == RenderStepSpritesOver && !(attrib & 0x80))) {
-                    const u8 sprx = sprcache[spridx];
+                    const u8 sprx = roCache.x;
                     if (sprx < 168) {
-                        u16 data = *(u16*)(&sprcache[spridx + 2]);
+                        u16 data = roCache.data;
                         for (u8 x = sprx; x < sprx + 8; x++) {
                             u8 pixel = data & 0x3;
                             if (pixel && x >= 8 && x < 168) {
