@@ -101,16 +101,17 @@ bool GamePak::Load(const char* pROM_data, size_t size)
         m_RAM_bank_mask = 0;
     }
 
-    const size_t rom_size = (32 * 1024ULL) << m_header.fields.ROMSize;
-    ROM.resize(rom_size);
+    m_ROM_size = (32 * 1024ULL) << m_header.fields.ROMSize;
+    ROM.resize(m_ROM_size);
 
-    if (!fnRead(ROM.data(), 0, rom_size)) {
+    if (!fnRead(ROM.data(), 0, m_ROM_size)) {
         printf("Error : ROM too small\n");
         return false;
     }
 
     m_pCur_ROM_bank  = &ROM[0x4000];
-    m_ROM_bank_count = rom_size / (16 * 1024);
+    m_cur_ROM_bank   = 1;
+    m_ROM_bank_count = m_ROM_size / (16 * 1024);
     m_ROM_bank_mask  = m_ROM_bank_count - 1;
 
     m_public_header.title    = title;
@@ -167,6 +168,9 @@ u8 GamePak::ROMAccess<Access::Write>(const u16 addr, const u8 v)
             break;
         case MBC::MBC2:
             m_ROM_bank_select = v & 0xF;
+            if (m_ROM_bank_select == 0) {
+                m_ROM_bank_select = 1;
+            }
             m_cur_ROM_bank    = m_ROM_bank_select;
             fnUpdateCurROMBank();
             break;

@@ -248,6 +248,10 @@ int main(int argc, char* argv[])
     // file_name = R"(D:\emu\gb\Dr. Franken (Europe) (En,Fr,De,Es,It,Nl,Sv).gb)";
     // file_name = R"(D:\emu\gb\Aretha II (Japan).gb)";
     // file_name = R"(D:\emu\gb\Zerd no Densetsu (Japan).gb)";
+    // file_name = R"(D:\emu\gb\Magic Knight RayEarth 2nd. - The Missing Colors (Japan) (SGB Enhanced).gb)";
+    // file_name = R"(D:\emu\gb\Dai-2-ji Super Robot Taisen G (Japan) (SGB Enhanced).gb)";
+    // file_name = R"(D:\emu\gb\Final Fantasy Legend, The (USA).gb)";
+
 
     // file_name = R"(D:\emu\gb\Tests\cpu_instrs\cpu_instrs.gb)";
     // file_name = R"(D:\emu\gb\Tests\cpu_instrs\individual\02-interrupts.gb)";
