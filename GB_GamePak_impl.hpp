@@ -109,10 +109,11 @@ bool GamePak::Load(const char* pROM_data, size_t size)
         return false;
     }
 
-    m_pCur_ROM_bank  = &ROM[0x4000];
-    m_cur_ROM_bank   = 1;
-    m_ROM_bank_count = m_ROM_size / (16 * 1024);
-    m_ROM_bank_mask  = m_ROM_bank_count - 1;
+    m_pCur_ROM_bank   = &ROM[0x4000];
+    m_cur_ROM_bank    = 1;
+    m_ROM_bank_select = 1;
+    m_ROM_bank_count  = m_ROM_size / (16 * 1024);
+    m_ROM_bank_mask   = m_ROM_bank_count - 1;
 
     m_public_header.title    = title;
     m_public_header.RAM_size = m_RAM_size;
