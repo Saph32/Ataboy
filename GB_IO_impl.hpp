@@ -102,6 +102,15 @@ u8 IO::RegAccess(System& rSystem, const u8 addr, const u8 v)
     case 0x41:
         if constexpr (eAccess == Access::Write) {
             rSystem.m_video.STAT.value = v & 0x78;
+
+            // Weird DMG bug. When writting to STAT in blank mode, an interrupt is risen.
+            // source : http://www.devrs.com/gb/files/faqs.html#GBBugs
+            // This is required by Zerd no Densetsu. That game actually doesn't work in a CGB.
+            if (rSystem.m_video.LCDC.bits.lcden) {
+                if (rSystem.m_video.m_mode == 1 || rSystem.m_video.m_mode == 0) {
+                    rSystem.m_cpu.IF.f.lcdstat = 1;
+                }
+            }
         } else {
             rSystem.m_video.UpdateSTAT();
             return rSystem.m_video.STAT.value;
