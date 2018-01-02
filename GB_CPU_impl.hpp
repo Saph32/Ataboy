@@ -672,22 +672,23 @@ void CPU::Execute(System& rSystem)
     } else if (IF.value & IE.value & 0x1f) {
         if (IME) {
             u16 ivector = 0x40;
-            if (IF.f.joypad & IE.f.joypad) {
-                IF.f.joypad = 0;
-                ivector     = 0x60;
-            } else if (IF.f.serial & IE.f.serial) {
-                IF.f.serial = 0;
-                ivector     = 0x58;
-            } else if (IF.f.timer & IE.f.timer) {
-                IF.f.timer = 0;
-                ivector    = 0x50;
+            if (IF.f.vblank & IE.f.vblank) {
+                IF.f.vblank = 0;
+                ivector     = 0x40;
             } else if (IF.f.lcdstat & IE.f.lcdstat) {
                 IF.f.lcdstat = 0;
                 ivector      = 0x48;
-            } else if (IF.f.vblank & IE.f.vblank) {
-                IF.f.vblank = 0;
-                ivector     = 0x40;
+            } else if (IF.f.timer & IE.f.timer) {
+                IF.f.timer = 0;
+                ivector    = 0x50;
+            } else if (IF.f.serial & IE.f.serial) {
+                IF.f.serial = 0;
+                ivector     = 0x58;
+            } else if (IF.f.joypad & IE.f.joypad) {
+                IF.f.joypad = 0;
+                ivector     = 0x60;
             };
+
             IME = false;
             PUSH16(rSystem, R.PC);
             R.PC   = ivector;
