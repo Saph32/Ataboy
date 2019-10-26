@@ -25,12 +25,6 @@
 
 #pragma once
 
-#include <boost/version.hpp>
-
-#if BOOST_VERSION <= 106501
-#define _SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING
-#endif
-
 #include <vector>
 #include <string>
 

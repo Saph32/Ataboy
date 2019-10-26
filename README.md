@@ -5,24 +5,22 @@ How to compile :
 
 Windows:
 
-	- Visual Studio 2017.3 is required.
+	- Visual Studio 2019 is required.
 	- You need to install SDL2 and Boost:
 		- Get vcpkg from https://github.com/Microsoft/vcpkg
 		- Follow the instructions for bootstrap
 		- .\vcpkg integrate install
 		- .\vcpkg install sdl2:x64-windows
-		- .\vcpkg install boost:x64-windows
 		- .\vcpkg install libpng:x64-windows
 	- Open Ataboy.sln
 	- Build
 	
 Linux:
 
-	- GCC 7 or Clang 5
+	- GCC 8 or Clang 7
 	- Install SDL2 with your package manager
-	- Install Boost (1.54 or higher) with your package manager
 	- Install libpng with your package manager
-	- Install CMake with your package manager
+	- Install CMake 3.10 or later with your package manager
 	- Open a terminal on the source directory
 	- mkdir build
 	- cd build

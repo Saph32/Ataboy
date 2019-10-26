@@ -32,11 +32,9 @@
 #include <fstream>
 #include <cstdio>
 
-#include <boost/filesystem.hpp>
+#include <filesystem>
 
 using namespace std;
-
-namespace filesystem = boost::filesystem;
 
 static const std::string separator = filesystem::path("/").make_preferred().string();
 
